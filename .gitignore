@@ -229,3 +229,4 @@ torch_extensions/
 datasets/
 data/
 
+*.pdf
