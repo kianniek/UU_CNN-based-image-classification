@@ -205,3 +205,27 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# PyTorch / deep learning artifacts
+# Model weights and checkpoints
+*.pt
+*.pth
+*.pth.tar
+*.ckpt
+*.ckpt.*
+checkpoints/
+weights/
+models/
+# Experiment logs and tensorboard
+runs/
+tb_logs/
+tensorboard/
+logs/
+wandb/
+mlruns/
+# PyTorch build / extension caches
+.cache/torch_extensions
+torch_extensions/
+# Optional large dataset directories (uncomment if used)
+datasets/
+data/
+

@@ -1,9 +1,9 @@
 # TODO
 ## Contributers: [Kian Hamidi](https://github.com/kianniek) & [Vinn Majarocon](https://github.com/Veerific/)
 
-To hit a "completionist" run and incorporate **all** choice tasks (Choices 1–8), your workload just got significantly heavier, but your report will be a powerhouse.
-
-Since you have 8 specific choice tasks, I’ve reorganized the list to balance the load between Kian and Vinn. I’ve also included the "hidden" requirements from the assignment text (like Kaiming initialization and padding rules).
+> To install all dependancies please run 
+> ```pip install -r requirements.txt``` 
+> in the project root directory
 
 ---
 
