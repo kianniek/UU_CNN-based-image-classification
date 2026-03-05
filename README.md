@@ -9,12 +9,12 @@
 
 ### 🏗️ Phase 1: Foundation & Baseline (CIFAR-10)
 
-* [ ] **[Kian]** **Data & Init:** Implement CIFAR-10 loading (80/20 split) and apply `torch.nn.init.kaiming_uniform` to all models.
+* [x] **[Kian]** **Data & Init:** Implement CIFAR-10 loading (80/20 split) and apply `torch.nn.init.kaiming_uniform` to all models.
 * [ ] **[Vinn]** **Baseline Architecture:** Build **CIFAR10_lenet**. *Constraint: 3-channel, 32x32x3, no zero-padding, Max/Avg Pool.*
-* [ ] **[Kian]** **Training Engine:** Create the script with Adam ($\text{LR}=0.001$, Batch 32) and Cross-Entropy loss.
+* [x] **[Kian]** **Training Engine:** Create the script with Adam ($\text{LR}=0.001$, Batch 32) and Cross-Entropy loss.
 * [ ] **[Vinn]** **Model Evolution:** Create **Model 1** (1 change from LeNet) and **Model 2** (1 change from Model 1). Document the "Why" for each.
-* [ ] **[Kian]** **Choice 1 (5 pts):** Implement LR Scheduler (halve every 5 epochs). *Required: Plot LR decay vs. Epochs.*
-* [ ] **[Kian]** **Choice 5 (5 pts):** Add Data Augmentation (3+ techniques). *Required: Compare performance with vs. without augmentation.*
+* [x] **[Kian]** **Choice 1 (5 pts):** Implement LR Scheduler (halve every 5 epochs). *Required: Plot LR decay vs. Epochs.*
+* [x] **[Kian]** **Choice 5 (5 pts):** Add Data Augmentation (3+ techniques). *Required: Compare performance with vs. without augmentation.*
 
 ---
 

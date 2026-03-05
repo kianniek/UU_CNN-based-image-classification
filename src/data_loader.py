@@ -24,9 +24,15 @@ and increase the variance of the validation metric, while a 70/30 split would
 unnecessarily reduce the training set size for a dataset of this scale.
 """
 
+import os
 import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
+
+
+# Default num_workers: 0 on Windows (spawn-based multiprocessing is fragile),
+# 2 elsewhere (fork is safe).
+_DEFAULT_WORKERS = 0 if os.name == "nt" else 2
 
 
 # CIFAR-10 channel-wise statistics (pre-computed over the training set)
@@ -49,13 +55,24 @@ CIFAR10_CLASSES = (
 
 
 # Return a composed transform pipeline.
+#
+# When ``augment=True`` the following **4 augmentation techniques** are applied
+# (satisfies the ≥ 3 requirement for Choice 5):
+#   1. RandomCrop with 4-pixel padding
+#   2. RandomHorizontalFlip
+#   3. ColorJitter (brightness, contrast, saturation)
+#   4. RandomRotation (±15°)
 def get_transforms(augment: bool = False):
 
     if augment:
         return transforms.Compose(
             [
                 transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ColorJitter(
+                    brightness=0.2, contrast=0.2, saturation=0.2
+                ),
+                transforms.RandomRotation(15),
                 transforms.ToTensor(),
                 transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
             ]
@@ -72,7 +89,7 @@ def get_transforms(augment: bool = False):
 def load_cifar10(
     data_dir: str = "./data",
     batch_size: int = 64,
-    num_workers: int = 2,
+    num_workers: int = _DEFAULT_WORKERS,
     val_fraction: float = 0.2,
     augment_train: bool = True,
     seed: int = 42,
