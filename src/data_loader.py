@@ -88,7 +88,7 @@ def get_transforms(augment: bool = False):
 # Download CIFAR-10 and return DataLoaders for train / val / test.
 def load_cifar10(
     data_dir: str = "./data",
-    batch_size: int = 64,
+    batch_size: int = 32,
     num_workers: int = _DEFAULT_WORKERS,
     val_fraction: float = 0.2,
     augment_train: bool = True,

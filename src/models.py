@@ -117,7 +117,6 @@ class DeepCNN(nn.Module):
         x = self.classifier(x)
         return x
 
-
 # Registry helper
 MODEL_REGISTRY = {
     "simple": SimpleCNN,

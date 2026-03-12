@@ -90,6 +90,7 @@ def train_model(
     use_scheduler: bool = True,
     scheduler_step_size: int = 5,
     scheduler_gamma: float = 0.5,
+    save_path: Optional[str] = None,
 ) -> Dict[str, List[float]]:
     """
     Full training loop.
@@ -114,6 +115,8 @@ def train_model(
         Epoch interval for LR reduction (default 5).
     scheduler_gamma : float
         Multiplicative factor for LR reduction (default 0.5 → halve).
+    save_path : str or None
+        If provided, saves the final model state_dict to this path.
 
     Returns
     -------
@@ -177,5 +180,15 @@ def train_model(
     if best_weights is not None:
         model.load_state_dict(best_weights)
         print(f"\nRestored best model (val acc {best_val_acc:.2f}%)")
+
+    # Save final model state_dict if requested
+    if save_path is not None:
+        import os
+
+        save_dir = os.path.dirname(save_path)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+        torch.save(model.state_dict(), save_path)
+        print(f"Model saved → {save_path}")
 
     return history

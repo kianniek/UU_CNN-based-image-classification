@@ -1,9 +1,89 @@
 # TODO
 ## Contributers: [Kian Hamidi](https://github.com/kianniek) & [Vinn Majarocon](https://github.com/Veerific/)
 
-> To install all dependancies please run 
-> ```pip install -r requirements.txt``` 
-> in the project root directory
+> To install all dependencies please run:
+> ```bash
+> pip install -r requirements.txt
+> ```
+>
+> ---
+>
+> **Setup Guide — Run this project reliably**
+>
+> - **Prerequisites:** Python 3.8+ recommended. Verify with:
+> ```bash
+> python --version
+> pip --version
+> ```
+>
+> - **Install Python (if missing):**
+>   - Windows: Install from https://python.org and check "Add Python to PATH".
+>   - macOS: `brew install python` or use the official installer.
+>   - Linux: `sudo apt install python3 python3-venv python3-pip` (Debian/Ubuntu).
+>
+> - **Clone or place the project root** so you can see `requirements.txt` and `main.py`.
+>
+> - **Create and activate a virtual environment (recommended):**
+>   - Windows (PowerShell):
+> ```powershell
+> python -m venv venv
+> .\venv\Scripts\Activate.ps1
+> ```
+>   - Windows (cmd):
+> ```cmd
+> python -m venv venv
+> venv\Scripts\activate
+> ```
+>   - macOS / Linux:
+> ```bash
+> python3 -m venv venv
+> source venv/bin/activate
+> ```
+>
+> - **Upgrade pip and install dependencies:**
+> ```bash
+> pip install --upgrade pip setuptools wheel
+> pip install -r requirements.txt
+> ```
+> If `torch` fails, follow the instructions at https://pytorch.org/get-started/locally to install the wheel that matches your OS, Python and CUDA.
+>
+> - **Prepare CIFAR dataset (if missing):** the repo includes `data/cifar-10-batches-py/`. To download automatically:
+> ```bash
+> python - <<'PY'
+> from torchvision import datasets
+> datasets.CIFAR10(root='data', train=True, download=True)
+> datasets.CIFAR10(root='data', train=False, download=True)
+> print('CIFAR-10 downloaded to data/')
+> PY
+> ```
+> Or see `src/data_loader.py` for dataset helpers.
+>
+> - **Quick smoke-run:**
+> ```bash
+> python main.py
+> ```
+> Check `main.py` or `src/train.py` for available CLI args (epochs, batch size, train/eval).
+>
+> - **GPU check:** in Python run:
+> ```python
+> import torch
+> print(torch.__version__, torch.cuda.is_available())
+> ```
+> If CUDA is not available but you have an NVIDIA GPU, install the appropriate CUDA-enabled `torch` wheel from the PyTorch site and ensure NVIDIA drivers are installed.
+>
+> - **Run tests (optional):**
+> ```bash
+> pip install -r requirements.txt
+> pytest -q
+> ```
+>
+> - **Troubleshooting tips:**
+>   - Permission issues: try an elevated shell or `pip install --user ...`.
+>   - Missing `venv` module: install `python3-venv` (Linux).
+>   - Torch install errors: clear pip cache (`pip cache purge`) and re-run the PyTorch selector install command.
+>   - Dataset errors: confirm `data/` path or update data path in `src/data_loader.py`.
+>
+> If you want, I can add this guide as a new README section and open a PR with the change.
 
 ---
 
@@ -58,7 +138,6 @@
 * [ ] **[Vinn]** **Visuals & Tables:** Loss/Acc graphs (all models), LR graph, t-SNE plot, and the Top-1 Accuracy summary table.
 * [ ] **[Vinn]** **Architectural Discussion:** Write the pair-wise comparisons (Baseline $\rightarrow$ M1 $\rightarrow$ M2) and explain the auxiliary output findings.
 * [ ] **[Kian]** **Logic Justification:** Explain the choice of 80/20 split, the data augmentation impact, and the hyperparameter search results.
-* [ ] **[Kian]** **Admin:** Collect all GenAI prompts, host model weights publicly (Google Drive/GitHub), and ZIP the code.
 * [ ] **[Both]** **Final Polish:** Ensure the report is 2–5 pages and covers the "Generalization" discussion (Train vs. Val vs. Test performance).
 
 ---
