@@ -97,6 +97,7 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         use_scheduler=not args.no_scheduler,
         scheduler_step_size=args.scheduler_step,
         scheduler_gamma=args.scheduler_gamma,
+        save_path=f"results/{label}_{args.epochs}_{args.lr}.pth",
     )
 
     # Final test evaluation
