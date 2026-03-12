@@ -9,11 +9,14 @@ from typing import cast
 # Ensure the project root is on sys.path so the `src` package is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.models import LeNet5
+# ask the user to choose a model (must match the one you trained!)
+model_name = input("Enter model name (simple, medium, deep): ").strip().lower()
+if model_name not in ["simple", "medium", "deep"]:
+    print(f"Invalid model name '{model_name}'. Please choose from: simple, medium, deep.")
+    sys.exit(1)
 
 # 1. Load your trained model
-model = LeNet5(num_classes=10)
-model.load_state_dict(torch.load('results/lenet5_3_0.001.pth', map_location='cpu'))
+model = torch.load(f'results/{model_name}_3_0.001.pth', map_location='cpu')
 model.eval()
 
 # 2. Define the transformation (Must match training!)

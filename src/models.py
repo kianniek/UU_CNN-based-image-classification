@@ -136,56 +136,11 @@ class DeepCNN(nn.Module):
         x = self.classifier(x)
         return x
 
-import torch
-import torch.nn as nn
-
-class LeNet5(nn.Module):
-    def __init__(self, num_classes: int = 10):
-        super(LeNet5, self).__init__()
-        
-        # C1: Input 1x32x32 -> 6x28x28
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=6, kernel_size=5)
-        self.relu1 = nn.ReLU()
-        # S2: 6x28x28 -> 6x14x14
-        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        
-        # C3: 6x14x14 -> 16x10x10
-        self.conv3 = nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5)
-        self.relu3 = nn.ReLU()
-        # S4: 16x10x10 -> 16x5x5
-        self.pool4 = nn.AvgPool2d(kernel_size=2, stride=2)
-        
-        # C5: Flatten 16x5x5 (400) -> 120
-        self.fc5 = nn.Linear(16 * 5 * 5, 120)
-        self.relu5 = nn.ReLU()
-        
-        # F6: 120 -> 84
-        self.fc6 = nn.Linear(120, 84)
-        self.relu6 = nn.ReLU()
-        
-        # Output: 84 -> num_classes
-        self.output = nn.Linear(84, num_classes)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.relu1(self.conv1(x))
-        x = self.pool2(x)
-        x = self.relu3(self.conv3(x))
-        x = self.pool4(x)
-        
-        # Flatten
-        x = torch.flatten(x, 1)
-        
-        x = self.relu5(self.fc5(x))
-        x = self.relu6(self.fc6(x))
-        x = self.output(x)
-        return x
-
 # Registry helper
 MODEL_REGISTRY = {
     "simple": SimpleCNN,
     "medium": MediumCNN,
     "deep": DeepCNN,
-    "lenet5": LeNet5,
 }
 
 
@@ -194,7 +149,7 @@ MODEL_REGISTRY = {
 # Parameters
 # ----------
 # name : str
-#     One of ``"simple"``, ``"medium"``, ``"deep"``, ``"lenet5"``.
+#     One of ``"simple"``, ``"medium"``, ``"deep"``.
 # num_classes : int
 #     Number of output classes (default 10 for CIFAR-10).
 
