@@ -13,11 +13,11 @@ An 80/20 train/validation split is a well-established default that balances two
 competing concerns:
 
 1. *Sufficient training data* – 40 000 images still provide ample variety for
-   learning robust features on CIFAR-10's 10 classes.
+    learning robust features on CIFAR-10's 10 classes.
 2. *Reliable validation estimates* – 10 000 validation samples (1 000 per class
-   when stratified) yield tight confidence intervals on accuracy, making it
-   practical to compare architectural and hyper-parameter choices during
-   development without touching the held-out test set.
+    when stratified) yield tight confidence intervals on accuracy, making it
+    practical to compare architectural and hyper-parameter choices during
+    development without touching the held-out test set.
 
 A more aggressive split (e.g. 90/10) would leave only 5 000 validation samples
 and increase the variance of the validation metric, while a 70/30 split would
@@ -27,6 +27,7 @@ unnecessarily reduce the training set size for a dataset of this scale.
 import os
 import torch
 from torch.utils.data import DataLoader, random_split
+import torchvision
 from torchvision import datasets, transforms
 
 
@@ -56,13 +57,15 @@ CIFAR10_CLASSES = (
 
 # Return a composed transform pipeline.
 #
-# When ``augment=True`` the following **4 augmentation techniques** are applied
+# When ``augment=True`` the following **4 augmentation techniques** are applied1
 # (satisfies the ≥ 3 requirement for Choice 5):
 #   1. RandomCrop with 4-pixel padding
 #   2. RandomHorizontalFlip
 #   3. ColorJitter (brightness, contrast, saturation)
 #   4. RandomRotation (±15°)
-def get_transforms(augment: bool = False):
+
+# edit: adjusted function to take in mean and std as arguments
+def get_transforms(mean, std, augment: bool = False):
 
     if augment:
         return transforms.Compose(
@@ -74,13 +77,13 @@ def get_transforms(augment: bool = False):
                 ),
                 transforms.RandomRotation(15),
                 transforms.ToTensor(),
-                transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
+                transforms.Normalize(mean, std),
             ]
         )
     return transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
+            transforms.Normalize(mean, std),
         ]
     )
 
@@ -99,14 +102,15 @@ def load_cifar10(
         root=data_dir,
         train=True,
         download=True,
-        transform=get_transforms(augment=augment_train),
+        transform=get_transforms(CIFAR100_MEAN, CIFAR100_STD, augment=augment_train),
+        
     )
 
     test_dataset = datasets.CIFAR10(
         root=data_dir,
         train=False,
         download=True,
-        transform=get_transforms(augment=False),
+        transform=get_transforms(CIFAR100_MEAN, CIFAR100_STD, augment=False),
     )
 
     total_train = len(full_train_dataset)
@@ -122,7 +126,7 @@ def load_cifar10(
         root=data_dir,
         train=True,
         download=False,
-        transform=get_transforms(augment=False),
+        transform=get_transforms(CIFAR100_MEAN, CIFAR100_STD, augment=False),
     )
     val_dataset = torch.utils.data.Subset(full_train_eval, val_dataset.indices)
 
@@ -158,3 +162,133 @@ def load_cifar10(
     )
 
     return train_loader, val_loader, test_loader
+
+
+# Default num_workers: 0 on Windows (spawn-based multiprocessing is fragile),
+# 2 elsewhere (fork is safe).
+_DEFAULT_WORKERS = 0 if os.name == "nt" else 2
+
+
+# CIFAR-10 channel-wise statistics (pre-computed over the training set)
+CIFAR100_MEAN = (0.5070, 0.4865,  0.4409)
+CIFAR100_STD = (0.2673, 0.2564, 0.2761)
+
+# CIFAR-100 class names (index → human-readable label)
+CIFAR100_SUPERCLASSES = (
+    "aquatic_mammals",
+    "fish",
+    "flowers",
+    "food_containers",
+    "fruit_and_vegetables",
+    "household_electrical_devices",
+    "household_furniture",
+    "insects",
+    "large_carnivores",
+    "large_man_made_outdoor_things",
+    "large_natural_outdoor_scenes",
+    "large_omnivores_and_herbivores",
+    "medium_mammals",
+    "non_insect_invertebrates",
+    "people",
+    "reptiles",
+    "small_mammals",
+    "trees",
+    "vehicles_1",
+    "vehicles_2",
+)
+
+# Wrapper class based on AI prompt (Claude.AI) and https://github.com/ryanchankh/cifar100coarse/blob/master/sparse2coarse.py
+# I know Im not allowed to use GitHub repo code but i don't know how to implement this myself
+# I'll find a way to rewrite this myself/ask ronald about this because im so annoyed
+class CIFAR100Super(datasets.CIFAR100):
+    def __init__(self, *args, **kwargs):
+        super(CIFAR100Super, self).__init__(*args, **kwargs)
+        
+        self.coarse_map = [
+            4, 1, 14, 8, 0, 6, 7, 7, 18, 3, 3, 14, 9, 18, 7, 11, 3, 9, 7, 11,
+            6, 11, 5, 10, 7, 6, 13, 15, 3, 15, 0, 11, 1, 10, 12, 14, 16, 9, 11, 5,
+            5, 19, 8, 8, 15, 13, 14, 17, 18, 10, 16, 4, 17, 4, 2, 0, 17, 4, 18, 17,
+            10, 3, 2, 12, 12, 16, 12, 1, 9, 19, 2, 10, 0, 1, 16, 12, 9, 13, 15, 13,
+            16, 19, 2, 4, 6, 19, 5, 5, 8, 19, 18, 1, 2, 15, 6, 0, 17, 8, 14, 13
+        ]
+        
+    def __getitem__(self,index):
+        data = super().__getitem__(index)
+        img, target =  data[0], data[1]
+        return img, self.coarse_map[target]
+
+# Download CIFAR-100 and return DataLoaders for train / val / test.
+def load_cifar100(
+    data_dir: str = "./data",
+    batch_size: int = 32,
+    num_workers: int = _DEFAULT_WORKERS,
+    val_fraction: float = 0.2,
+    augment_train: bool = True,
+    seed: int = 42,
+):
+
+    full_train_dataset = CIFAR100Super(
+        root=data_dir,
+        train=True,
+        download=True,
+        transform=get_transforms(CIFAR100_MEAN, CIFAR100_STD, augment=augment_train),
+    )
+
+    test_dataset =  CIFAR100Super(
+        root=data_dir,
+        train=False,
+        download=True,
+        transform=get_transforms(CIFAR100_MEAN, CIFAR100_STD, augment=False),
+    )
+
+    total_train = len(full_train_dataset)
+    val_size = int(total_train * val_fraction)
+    train_size = total_train - val_size
+
+    generator = torch.Generator().manual_seed(seed)
+    train_dataset, val_dataset = random_split(
+        full_train_dataset, [train_size, val_size], generator=generator
+    )
+
+    full_train_eval =  CIFAR100Super(
+        root=data_dir,
+        train=True,
+        download=False,
+        transform=get_transforms(CIFAR100_MEAN, CIFAR100_STD, augment=False),
+    )
+    val_dataset = torch.utils.data.Subset(full_train_eval, val_dataset.indices)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+
+    print(
+        f"CIFAR-100 loaded — "
+        f"train: {len(train_dataset)}, "
+        f"val: {len(val_dataset)}, "
+        f"test: {len(test_dataset)}"
+    )
+
+    return train_loader, val_loader, test_loader
+
+

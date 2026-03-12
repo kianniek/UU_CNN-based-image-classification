@@ -5,7 +5,7 @@ Main entry point for CIFAR-10 CNN training and evaluation.
 import argparse
 import torch
 
-from src.data_loader import load_cifar10, CIFAR10_CLASSES
+from src.data_loader import load_cifar10, CIFAR10_CLASSES, load_cifar100, CIFAR100_SUPERCLASSES
 from src.models import get_model, MODEL_REGISTRY
 from src.train import train_model, evaluate
 from src.visualize import (
@@ -73,12 +73,21 @@ def parse_args():
 
 def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
-    train_loader, val_loader, test_loader = load_cifar10(
-        data_dir=args.data_dir,
-        batch_size=args.batch_size,
-        augment_train=augment,
-        seed=args.seed,
-    )
+    
+    if args.model == "cifar100":
+        train_loader, val_loader, test_loader = load_cifar100(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=augment,
+            seed=args.seed,
+        )
+    else:
+        train_loader, val_loader, test_loader = load_cifar10(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=augment,
+            seed=args.seed,
+        )
 
     model = get_model(args.model).to(device)
     label = f"{args.model}{tag}"
@@ -118,7 +127,10 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    print(f"Classes: {CIFAR10_CLASSES}")
+    if args.model == "cifar100":
+        print(f"Classes: {CIFAR100_SUPERCLASSES}")
+    else:
+        print(f"Classes: {CIFAR10_CLASSES}")
 
     if args.compare_augmentation:
         # ---- Choice 5: train with & without augmentation, then compare ----

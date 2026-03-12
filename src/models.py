@@ -118,11 +118,45 @@ class DeepCNN(nn.Module):
         x = self.classifier(x)
         return x
 
+# model 4 - CIFAR100
+# Uses model 2's architecture, but adjusted to create 20 classes instead of 10
+class CifarCNN(nn.Module):
+
+    def __init__(self, num_classes: int = 20):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 6, kernel_size=5, padding=0, stride=1), # Layer 1: Convolution (1 32x32 => 6 28x28)
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2), # Layer 2: Pooling (6 28x28 => 6 14x14)
+
+            nn.Conv2d(6, 16, kernel_size=5, padding=0), # Layer 3: Convolution (6 14x14 => 16 10x10)
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2), # Layer 4: Pooling (16 10x10 => 16 5x5)
+            
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(400, 120), # Layer 5: Convolution/Fully  Connected (16 5x5 => 1 120)
+            nn.Dropout(p=0.2),
+            nn.ReLU(),
+            nn.Linear(120, 84),
+            nn.ReLU(),
+            nn.Linear(84, 20), # Layer 6: Output (1 120 => 10 32x32)
+        )
+
+        _apply_kaiming_init(self)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.features(x)
+        x = x.view(x.size(0), -1) # Flattens feature maps
+        x = self.classifier(x)
+        return x
+
 # Registry helper
 MODEL_REGISTRY = {
     "simple": SimpleCNN,
     "medium": MediumCNN,
     "deep": DeepCNN,
+    "cifar100":CifarCNN
 }
 
 
