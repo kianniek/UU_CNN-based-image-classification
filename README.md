@@ -90,9 +90,9 @@
 ### 🏗️ Phase 1: Foundation & Baseline (CIFAR-10)
 
 * [x] **[Kian]** **Data & Init:** Implement CIFAR-10 loading (80/20 split) and apply `torch.nn.init.kaiming_uniform` to all models.
-* [ ] **[Vinn]** **Baseline Architecture:** Build **CIFAR10_lenet**. *Constraint: 3-channel, 32x32x3, no zero-padding, Max/Avg Pool.*
+* [x] **[Vinn]** **Baseline Architecture:** Build **CIFAR10_lenet**. *Constraint: 3-channel, 32x32x3, no zero-padding, Max/Avg Pool.*
 * [x] **[Kian]** **Training Engine:** Create the script with Adam ($\text{LR}=0.001$, Batch 32) and Cross-Entropy loss.
-* [ ] **[Vinn]** **Model Evolution:** Create **Model 1** (1 change from LeNet) and **Model 2** (1 change from Model 1). Document the "Why" for each.
+* [x] **[Vinn]** **Model Evolution:** Create **Model 1** (1 change from LeNet) and **Model 2** (1 change from Model 1). Document the "Why" for each.
 * [x] **[Kian]** **Choice 1 (5 pts):** Implement LR Scheduler (halve every 5 epochs). *Required: Plot LR decay vs. Epochs.*
 * [x] **[Kian]** **Choice 5 (5 pts):** Add Data Augmentation (3+ techniques). *Required: Compare performance with vs. without augmentation.*
 
@@ -118,8 +118,8 @@
 
 ### 🔄 Phase 3: Transfer Learning (CIFAR-100)
 
-* [ ] **[Kian]** **CIFAR-100 Prep:** Load CIFAR-100 and adapt the "Best Architecture" for **20 class outputs**.
-* [ ] **[Kian]** **Scratch Training:** Train **CIFAR100_model** until convergence using original hyperparameters.
+* [x] **[ ~~Kian~~ Vinn]** **CIFAR-100 Prep:** Load CIFAR-100 and adapt the "Best Architecture" for **20 class outputs**.
+* [~] **[ ~~Kian~~ Vinn]** **Scratch Training:** Train **CIFAR100_model** until convergence using original hyperparameters. note: until convergence? I didn't do that oop
 * [ ] **[Vinn]** **Fine-Tuning:** Revert to 10 outputs; fine-tune on CIFAR-10 at half speed ($\text{LR}=0.0005$).
 * [ ] **[Vinn]** **Benchmarking:** Final Test of "Scratch Best Model" vs. **CIFAR10_pretrained**. *Required: Confusion Matrices for both.*
 
