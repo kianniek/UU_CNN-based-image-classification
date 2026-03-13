@@ -11,8 +11,6 @@ Provides a training loop with:
 
 import copy
 import time
-from sklearn.model_selection import KFold
-import numpy as np
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -94,7 +92,7 @@ def train_model(
     scheduler_step_size: int = 5,
     scheduler_gamma: float = 0.5,
     save_path: Optional[str] = None,
-    early_stopping: bool = True,
+    early_stopping: bool = False,
     patience: int = 3,
     monitor: str = "val_loss",
     max_epochs: int = 200,
