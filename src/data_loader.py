@@ -33,7 +33,7 @@ from torchvision import datasets, transforms
 
 # Default num_workers: 0 on Windows (spawn-based multiprocessing is fragile),
 # 2 elsewhere (fork is safe).
-_DEFAULT_WORKERS = 0 if os.name == "nt" else 2
+_DEFAULT_WORKERS = 2 if os.name == "nt" else 2
 
 
 # CIFAR-10 channel-wise statistics (pre-computed over the training set)

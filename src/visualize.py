@@ -5,6 +5,7 @@ Plotting functions for training curves, LR schedules, and augmentation compariso
 All plots are saved to ``results/`` by default.
 """
 
+import json
 import os
 from typing import Dict, List, Optional
 
@@ -163,3 +164,45 @@ def plot_augmentation_comparison(
     fig.savefig(fname, dpi=150)
     plt.close(fig)
     print(f"Augmentation comparison saved → {fname}")
+
+def plot_multi_model_comparison(
+    metadata_paths: List[str],
+    metric: str = "val_acc",
+    save_path: Optional[str] = None,
+) -> None:
+    """
+    Compares multiple models by plotting a specific metric from their metadata files.
+    
+    Parameters
+    ----------
+    metadata_paths : list[str]
+        List of paths to JSON metadata files.
+    metric : str
+        The key in the history dict to plot (e.g., 'val_acc', 'val_loss').
+    """
+    if save_path is None:
+        _ensure_dir(RESULTS_DIR)
+        save_path = os.path.join(RESULTS_DIR, f"comparison_{metric}.png")
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for path in metadata_paths:
+        with open(path, "r") as f:
+            data = json.load(f)
+        
+        history = data["history"]
+        label = data.get("label", os.path.basename(path))
+        epochs = list(range(1, len(history[metric]) + 1))
+        
+        ax.plot(epochs, history[metric], label=label, linewidth=2)
+
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel(metric.replace("_", " ").title())
+    ax.set_title(f"Model Comparison: {metric}")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+    print(f"Comparison plot saved → {save_path}")

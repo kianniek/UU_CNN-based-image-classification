@@ -24,6 +24,8 @@ def _apply_kaiming_init(model: nn.Module) -> None:
 class SimpleCNN(nn.Module):
     def __init__(self, num_classes: int = 10):
         super().__init__()
+        
+        # LeNet-5 Original adapted for 3 channels
         self.features = nn.Sequential(
             nn.Conv2d(3, 6, kernel_size=5, padding=0, stride=1), # Layer 1: Convolution (1 32x32 => 6 28x28)
             nn.ReLU(),
@@ -34,6 +36,8 @@ class SimpleCNN(nn.Module):
             nn.MaxPool2d(2, 2), # Layer 4: Pooling (16 10x10 => 16 5x5)
             
         )
+        
+        # LeNet-5 Original classifier
         self.classifier = nn.Sequential(
             nn.Linear(400, 120), # Layer 5: Fully Connects the flattened layer (16 5x5 => 1 120)
             nn.ReLU(),
@@ -42,8 +46,15 @@ class SimpleCNN(nn.Module):
             nn.Linear(84, num_classes), # Layer 6: Output (1 120 => 10 32x32)
         )
 
-        # Apply Kaiming uniform initialisation
-        _apply_kaiming_init(self)
+        # Apply initialization
+        self._apply_kaiming_init()
+
+    def _apply_kaiming_init(self):
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)

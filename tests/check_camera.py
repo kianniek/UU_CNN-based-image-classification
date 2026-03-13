@@ -15,8 +15,27 @@ if model_name not in ["simple", "medium", "deep"]:
     print(f"Invalid model name '{model_name}'. Please choose from: simple, medium, deep.")
     sys.exit(1)
 
+model_file = f"{model_name}.pth"
+all_file_with_model = [f for f in os.listdir("results") if f.startswith(model_name) and f.endswith(".pth")]
+print(f"Found {len(all_file_with_model)} model file(s) for '{model_name}' in 'results' directory.")
+if not all_file_with_model:
+    print(f"No model files found for '{model_name}' in 'results' directory.")
+    sys.exit(1)
+elif len(all_file_with_model) > 0:
+    print(f"Multiple model files found for '{model_name}':")
+    for i, fname in enumerate(all_file_with_model):
+        print(f"{i+1}. {fname}")
+    choice = input("Enter the number of the model file to use: ").strip()
+    try:
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(all_file_with_model):
+            raise ValueError()
+        model_file = all_file_with_model[idx]
+    except ValueError:
+        print("Invalid choice. Exiting.")
+        sys.exit(1)
 # 1. Load your trained model
-model = torch.load(f'results/{model_name}_3_0.001.pth', map_location='cpu')
+model = torch.load(f'results/{model_file}', map_location='cpu')
 model.eval()
 
 # 2. Define the transformation (Must match training!)

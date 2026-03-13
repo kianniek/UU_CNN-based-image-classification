@@ -6,11 +6,12 @@ Provides a training loop with:
 - Cross-Entropy loss
 - StepLR scheduler (halve LR every 5 epochs)
 - Per-epoch train / validation metrics collection
+- Early stopping with configurable patience and monitored metric
 """
 
 import copy
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -91,9 +92,22 @@ def train_model(
     scheduler_step_size: int = 5,
     scheduler_gamma: float = 0.5,
     save_path: Optional[str] = None,
-) -> Dict[str, List[float]]:
+    early_stopping: bool = False,
+    patience: int = 3,
+    monitor: str = "val_loss",
+    max_epochs: int = 200,
+) -> Dict[str, Any]:
     """
-    Full training loop.
+    Full training loop with optional early stopping.
+
+    Two modes
+    ---------
+    **Manual** (default): trains for exactly *epochs* epochs.
+
+    **Automatic** (``early_stopping=True``): trains up to *max_epochs*
+    epochs but stops early when the monitored metric has not improved
+    for *patience* consecutive epochs.  The *epochs* parameter is
+    ignored in this mode.
 
     Parameters
     ----------
@@ -103,7 +117,7 @@ def train_model(
         Data loaders for training and validation.
     device : torch.device
     epochs : int
-        Number of epochs.
+        Number of epochs (manual mode only).
     lr : float
         Initial learning rate for Adam.
     weight_decay : float
@@ -117,13 +131,29 @@ def train_model(
         Multiplicative factor for LR reduction (default 0.5 → halve).
     save_path : str or None
         If provided, saves the final model state_dict to this path.
+    early_stopping : bool
+        If True, enable automatic convergence detection.
+    patience : int
+        Number of epochs without improvement before stopping
+        (only used when ``early_stopping=True``).
+    monitor : str
+        Metric to monitor: ``"val_loss"`` (lower is better) or
+        ``"val_acc"`` (higher is better).
+    max_epochs : int
+        Upper-bound epoch count in automatic mode (default 200).
 
     Returns
     -------
     history : dict
         Keys: ``train_loss``, ``train_acc``, ``val_loss``, ``val_acc``,
-        ``lr`` (learning rate per epoch).
+        ``lr``, ``stopped_epoch``.
     """
+    if monitor not in ("val_loss", "val_acc"):
+        raise ValueError(f"monitor must be 'val_loss' or 'val_acc', got '{monitor}'")
+    # Determine total number of epochs
+    total_epochs = max_epochs if early_stopping else epochs
+
+    # Softmax is handled by the Cross Entropy loss function. It combines nn.LogSoftmax and nn.NLLLoss
     criterion = nn.CrossEntropyLoss()
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -131,7 +161,7 @@ def train_model(
     if use_scheduler:
         scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
 
-    history: Dict[str, List[float]] = {
+    history: Dict[str, Any] = {
         "train_loss": [],
         "train_acc": [],
         "val_loss": [],
@@ -139,10 +169,21 @@ def train_model(
         "lr": [],
     }
 
-    best_val_acc = 0.0
+    # Best-model tracking (metric-aware)
+    monitor_lower_is_better = monitor == "val_loss"
+    best_metric = float("inf") if monitor_lower_is_better else 0.0
     best_weights = None
+    best_epoch = 0
+    epochs_without_improvement = 0
+    converged = False
 
-    for epoch in range(1, epochs + 1):
+    if early_stopping:
+        print(
+            f"Early stopping enabled: monitor={monitor}, "
+            f"patience={patience}, max_epochs={max_epochs}"
+        )
+
+    for epoch in range(1, total_epochs + 1):
         t0 = time.time()
 
         current_lr = optimizer.param_groups[0]["lr"]
@@ -161,25 +202,59 @@ def train_model(
         elapsed = time.time() - t0
 
         print(
-            f"Epoch {epoch:>3d}/{epochs} | "
+            f"Epoch {epoch:>3d}/{total_epochs} | "
             f"LR {current_lr:.6f} | "
             f"Train Loss {train_loss:.4f}  Acc {train_acc:6.2f}% | "
             f"Val Loss {val_loss:.4f}  Acc {val_acc:6.2f}% | "
             f"{elapsed:.1f}s"
         )
 
-        # Track best model
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
+        # Track best model based on monitored metric
+        current_metric = val_loss if monitor_lower_is_better else val_acc
+        improved = (
+            current_metric < best_metric
+            if monitor_lower_is_better
+            else current_metric > best_metric
+        )
+
+        if improved:
+            best_metric = current_metric
             best_weights = copy.deepcopy(model.state_dict())
+            best_epoch = epoch
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
+        # Early stopping check
+        if early_stopping and epochs_without_improvement >= patience:
+            print(
+                f"\nConverged: {monitor} has not improved for "
+                f"{patience} epochs (best {monitor}="
+                f"{best_metric:.4f} at epoch {best_epoch})"
+            )
+            converged = True
+            break
 
         if scheduler is not None:
             scheduler.step()
 
+    # Record which epoch training actually stopped at
+    stopped_epoch = epoch
+    history["stopped_epoch"] = stopped_epoch
+
+    # Summary
+    if early_stopping and not converged:
+        print(
+            f"\nReached max epochs ({max_epochs}) without convergence. "
+            f"Best {monitor}={best_metric:.4f} at epoch {best_epoch}."
+        )
+
     # Restore best weights
     if best_weights is not None:
         model.load_state_dict(best_weights)
-        print(f"\nRestored best model (val acc {best_val_acc:.2f}%)")
+        metric_label = "val loss" if monitor_lower_is_better else "val acc"
+        unit = "" if monitor_lower_is_better else "%"
+        print(f"Restored best model (epoch {best_epoch}, {metric_label} {best_metric:.4f}{unit})")
 
     # Save final model state_dict if requested
     if save_path is not None:
