@@ -118,9 +118,9 @@
 
 ### 🔄 Phase 3: Transfer Learning (CIFAR-100)
 
-* [x] **[ ~~Kian~~ Vinn]** **CIFAR-100 Prep:** Load CIFAR-100 and adapt the "Best Architecture" for **20 class outputs**.
-* [~] **[ ~~Kian~~ Vinn]** **Scratch Training:** Train **CIFAR100_model** until convergence using original hyperparameters. note: until convergence? I didn't do that oop
-* [ ] **[Vinn]** **Fine-Tuning:** Revert to 10 outputs; fine-tune on CIFAR-10 at half speed ($\text{LR}=0.0005$).
+* [x] **[Vinn]** **CIFAR-100 Prep:** Load CIFAR-100 and adapt the "Best Architecture" for **20 class outputs**.
+* [~] **[Vinn]** **Scratch Training:** Train **CIFAR100_model** until convergence using original hyperparameters. note: until convergence? I didn't do that oop
+* [x] **[Kian]** **Fine-Tuning:** Revert to 10 outputs; fine-tune on CIFAR-10 at half speed ($\text{LR}=0.0005$).
 * [ ] **[Vinn]** **Benchmarking:** Final Test of "Scratch Best Model" vs. **CIFAR10_pretrained**. *Required: Confusion Matrices for both.*
 
 ---

@@ -101,7 +101,7 @@ def plot_training_curves(
     ax2.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    fname = os.path.join(save_dir, f"{model_name}_curves.png")
+    fname = os.path.join(save_dir, f"{model_name}_augmentation_curves.png")
     fig.savefig(fname, dpi=150)
     plt.close(fig)
     print(f"Training curves saved → {fname}")
