@@ -9,7 +9,8 @@ import json
 import os
 from typing import Dict, List, Optional
 import sklearn as sk
-import seaborn as sns
+import torch
+import seaborn as se
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -208,3 +209,15 @@ def plot_multi_model_comparison(
     fig.savefig(save_path, dpi=150)
     plt.close(fig)
     print(f"Comparison plot saved → {save_path}")
+    
+def plot_confusion_matrix(matrix):
+    
+    
+    se.heatmap(matrix, annot=True, fmt= "d", cmap="Blues", ax=ax)
+    fig, ax = plt.subplot(figsize=(10,8))
+    ax.set_xlabel("Predicted Labels")
+    ax.set_ylabel("True labels")
+    ax.set_title("Confusion Matrix")
+    im_name = os.path.join(RESULTS_DIR, f"confusion_matrix_test.png")
+    fig.saveFig(im_name, dpi=150)
+    

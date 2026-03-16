@@ -6,9 +6,8 @@ import os
 import json
 import argparse
 import torch
-import json
-import os
-from datetime import datetime
+import torch.nn as nn
+
 
 
 from src.data_loader import (
@@ -29,8 +28,9 @@ from src.visualize import (
     plot_lr_schedule,
     plot_training_curves,
     plot_augmentation_comparison,
-    plot_multi_model_comparison,  # New import
+    plot_confusion_matrix
 )
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -44,8 +44,7 @@ def parse_args():
         help="Model architecture to use (default: simple)",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=32, help="Mini-batch size (default: 32) "
-        "Standard batch sizes in literature have been: 32, 64, 128, 256"
+        "--batch-size", type=int, default=32, help="Mini-batch size (default: 32)"
     )
     parser.add_argument(
         "--epochs", type=int, default=20, help="Number of training epochs (default: 20)"
@@ -59,27 +58,9 @@ def parse_args():
     parser.add_argument(
         "--seed", type=int, default=42, help="Random seed (default: 42)"
     )
-
-    # K-fold CV
-    parser.add_argument(
-        "--kfold",
-        type=int,
-        default=5,
-        help="Enable k-fold cross-validation with specified k (0 to disable)",
-    )
-    parser.add_argument(
-        "--compare-kfold-split",
-        action="store_true",
-        help="Run both fixed train/val and k-fold CV, then save a side-by-side comparison",
-    )
-
-    # Hyperparameter search
-    parser.add_argument(
-        "--hyperparameter-search",
-        action="store_true",
-        help="Perform hyperparameter grid search",
-    )
-
+    
+    ## TODO: Add argument for testing model 
+    
     # Choice 1 — LR Scheduler
     parser.add_argument(
         "--no-scheduler",
@@ -105,31 +86,6 @@ def parse_args():
         action="store_true",
         help="Train twice (with & without augmentation) and plot the comparison",
     )
-    # Metadata comparison
-    parser.add_argument(
-        "--compare-models",
-        nargs="+",
-        help="Paths to metadata JSON files to compare (e.g. results/model1_metadata.json results/model2_metadata.json)",
-    )
-    # Early stopping / convergence detection
-    parser.add_argument(
-        "--early-stopping",
-        action="store_true",
-        help="Enable automatic convergence detection (early stopping)",
-    )
-    parser.add_argument(
-        "--patience", type=int, default=3,
-        help="Epochs without improvement before stopping (default: 3)",
-    )
-    parser.add_argument(
-        "--monitor", type=str, default="val_loss",
-        choices=["val_loss", "val_acc"],
-        help="Metric to monitor for early stopping (default: val_loss)",
-    )
-    parser.add_argument(
-        "--max-epochs", type=int, default=200,
-        help="Max epochs safety cap in automatic mode (default: 200)",
-    )
     # General
     parser.add_argument(
         "--no-augment",
@@ -143,24 +99,6 @@ def parse_args():
     )
     return parser.parse_args()
 
-def save_metadata(args, history, label, save_dir="results"):
-    """Saves hyperparameters and training history to a JSON file."""
-    os.makedirs(save_dir, exist_ok=True)
-    
-    # Combine args and history into one serializable dict
-    metadata = {
-        "timestamp": datetime.now().isoformat(),
-        "config": vars(args),
-        "history": history,
-        "label": label
-    }
-    
-    file_path = os.path.join(save_dir, f"{label}_metadata.json")
-    with open(file_path, "w") as f:
-        json.dump(metadata, f, indent=4)
-    
-    print(f"Metadata saved → {file_path}")
-    return file_path
 
 def _run_kfold_cv(args, device: torch.device):
     """Run k-fold cross-validation."""
@@ -307,22 +245,19 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
     model = get_model(args.model)
     
     if args.model == "finetune":
-        # Grab the model for CIFAR 100 specifically
-        model = get_model("cifar100")
         # load cifar100 model weights
-        model.load_state_dict(torch.load('results\\cifar100.pth'))
+        model.load_state_dict(torch.load('results\\cifar100_20_0.001.pth'))
         
         for name, layer in model.named_children():
-            # Freezes the first few layers (convolution 1, ReLu, pooling 1)
-            
+            # Freezes first layers
             if name == 'features':
-                feature_layers = list(layer.children())
-                for sublayer in feature_layers[:-3]:
-                    for parameter in sublayer.parameters():
-                        parameter.requires_grad = False
+                for parameter in layer.parameters():
+                    parameter.requires_grad = False   
             # Changes last layer to 10 outputs
-            if name == 'output':
-                model.output = nn.Linear(84,10)
+            if name == 'classifier':
+                last_layer = layer.pop(len(layer)-1)
+                last_layer = nn.Linear(84,10)
+                layer.append(last_layer)
                 
     model.to(device)
         
@@ -344,32 +279,48 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         scheduler_step_size=args.scheduler_step,
         scheduler_gamma=args.scheduler_gamma,
         save_path=f"results/{label}_{args.epochs}_{args.lr}.pth",
-        early_stopping=args.early_stopping,
-        patience=args.patience,
-        monitor=args.monitor,
-        max_epochs=args.max_epochs,
     )
 
-    # Save metadata for future comparison or graph recreation
-    save_metadata(args, history, label)
-
     # Final test evaluation
-    # Softmax is handled by the Cross Entropy loss function
     criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc = evaluate(model, test_loader, criterion, device)
-
+    test_loss, test_acc = eval(model, test_loader, criterion, device)
+    
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
     return history, model
 
+def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
+    """Helper: load data, build model, train, return history."""
+    if args.model == "cifar100":
+        train_loader, val_loader, test_loader = load_cifar100(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=augment,
+            seed=args.seed,
+        )
+    else:
+        train_loader, val_loader, test_loader = load_cifar10(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=augment,
+            seed=args.seed,
+        )
+
+    model = get_model(args.model)
+    
+    # get model waits for model specified
+    # load model weights
+    
+    # run test on test set
+    # generate usual stuff
+    
+    # separate test function cause i dont want to retrain a model everytime
+    criterion = torch.nn.CrossEntropyLoss()
+    test_loss, test_acc, conf_m = test(model, test_loader, criterion, device)
+    return test_loss, test_acc, conf_m
+
 def main():
     args = parse_args()
-
-    # If user wants to compare existing runs, do that and exit
-    if args.compare_models:
-        plot_multi_model_comparison(args.compare_models, metric="val_acc")
-        plot_multi_model_comparison(args.compare_models, metric="val_loss")
-        return
 
     # Reproducibility
     torch.manual_seed(args.seed)
@@ -386,27 +337,29 @@ def main():
         print(f"Classes: {CIFAR10_CLASSES}")
 
     if args.compare_augmentation:
+        # ---- Choice 5: train with & without augmentation, then compare ----
         history_aug, _ = _run_training(args, augment=True, device=device, tag="_aug")
         history_no_aug, _ = _run_training(args, augment=False, device=device, tag="_noaug")
 
         plot_augmentation_comparison(history_aug, history_no_aug, model_name=args.model)
         plot_training_curves(history_aug, model_name=f"{args.model}_aug")
         plot_training_curves(history_no_aug, model_name=f"{args.model}_noaug")
-        plot_lr_schedule(history_aug["lr"])
-    elif args.test_model:
-        # single test run
-        augment = not args.no_augment
-        
-        # ---- Run Model on Test Data only (requires pretrained model) ----
-        history, _, conf_m, tsne_coord, labels = _run_tests(args, augment=augment, device=device)
-        plot_confusion_matrix(conf_m, args.model)
-        plot_tsne(tsne_coord, labels, CIFAR10_CLASSES, args.model)
 
+        # Plot LR schedule (same for both runs)
+        plot_lr_schedule(history_aug["lr"])
+    elif args.test:
+        # run test module only
+        pass
     else:
+        # ---- Normal single training run ----
         augment = not args.no_augment
-        history, _ = _run_training(args, augment=augment, device=device)
+        history, _, model_predictions, correct_labels = _run_training(args, augment=augment, device=device)
+
+        # Choice 1 — Plot LR decay vs. Epochs
         plot_lr_schedule(history["lr"])
         plot_training_curves(history, model_name=args.model)
+        plot_confusion_matrix(conf_m)
+
 
 if __name__ == "__main__":
     main()
