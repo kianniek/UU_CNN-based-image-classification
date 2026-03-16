@@ -64,7 +64,7 @@ def evaluate(
     running_loss = 0.0
     correct = 0
     total = 0
-
+    
     for images, labels in loader:
         images, labels = images.to(device), labels.to(device)
         outputs = model(images)
@@ -168,6 +168,8 @@ def train_model(
         "val_acc": [],
         "lr": [],
     }
+    
+    
 
     # Best-model tracking (metric-aware)
     monitor_lower_is_better = monitor == "val_loss"

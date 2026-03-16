@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from src.models import SimpleCNN, MediumCNN, DeepCNN, get_model
+from src.models import SimpleCNN, MediumCNN, DeepCNN, CifarCNN, Cifar10CNN, get_model
 
 
 BATCH = 4
@@ -40,10 +40,21 @@ def test_deep_cnn():
     model = DeepCNN()
     _check_output_shape(model)
     _check_kaiming_init(model)
+    
+def test_cifar100_cnn():
+    model = CifarCNN()
+    _check_output_shape(model)
+    _check_kaiming_init(model)
+    
+def test_cifar10_cnn():
+    model = Cifar10CNN()
+    _check_output_shape(model)
+    _check_kaiming_init(model)
+    
 
 
 def test_get_model():
-    for name in ("simple", "medium", "deep"):
+    for name in ("simple", "medium", "deep", "cifar100"):
         model = get_model(name)
         _check_output_shape(model)
 
