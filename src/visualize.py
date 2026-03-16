@@ -211,13 +211,13 @@ def plot_multi_model_comparison(
     print(f"Comparison plot saved → {save_path}")
     
 def plot_confusion_matrix(matrix):
-    
+    fig, ax = plt.subplots(figsize=(10,8))
+
     
     se.heatmap(matrix, annot=True, fmt= "d", cmap="Blues", ax=ax)
-    fig, ax = plt.subplot(figsize=(10,8))
     ax.set_xlabel("Predicted Labels")
     ax.set_ylabel("True labels")
     ax.set_title("Confusion Matrix")
-    im_name = os.path.join(RESULTS_DIR, f"confusion_matrix_test.png")
-    fig.saveFig(im_name, dpi=150)
+    im_name = os.path.join(RESULTS_DIR, f"confusion_matrix_cifar10.png")
+    fig.savefig(im_name, dpi=150)
     

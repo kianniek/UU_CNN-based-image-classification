@@ -33,7 +33,8 @@ def test(
         _, predicted = outputs.max(1)
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
-        test_pred.append(images.argmax(dim=1))
+        prediction = outputs.data.max(1, keepdim=True)[1]
+        test_pred.append(prediction)
         test_label.append(labels)
         
     conf_m = compute_confusion_matrix(test_pred, test_label)

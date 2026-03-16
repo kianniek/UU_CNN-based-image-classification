@@ -115,60 +115,60 @@ python main.py --model deep --epochs 100
 
 ## Choice Tasks
 
-We have to choose the best performing model (e.g., `medium`) to optimize and validate your results.
-
-### Choice 1: Learning Rate Scheduling
-Train with the `StepLR` scheduler to visualize how decreasing the LR helps convergence.
-```bash
-python main.py --model medium --epochs 100 --scheduler-step 5 --scheduler-gamma 0.5
-```
-
-### Choice 2: 5-Fold Cross-Validation
-Verify the stability of your model across different data splits.
-```bash
-python main.py --model medium --epochs 100 --kfold 5 --compare-kfold-split
-```
-
-### Choice 3: Hyperparameter Search
-Automatically test different optimizers and learning rates to find the global optimum.
-```bash
-python main.py --model medium --hyperparameter-search --epochs 20
-```
-
-### Choice 5: Data Augmentation Comparison
-Quantify the impact of transformations (flips, crops, etc.) on model generalization.
-```bash
-python main.py --model medium --epochs 100 --compare-augmentation
-```
-
-### Choice 6: t-SNE output
-```bash
-python main.py --model medium --test-model --kfold 0
-```
----
-
-## Phase 3: Transfer Learning
-Leverage knowledge from a related dataset (CIFAR-100) to improve performance on CIFAR-10.
-
-### 1. Pre-training on CIFAR-100
-Train the model on the 20 superclasses of CIFAR-100.
-```bash
-python main.py --model cifar100 --epochs 150
-```
-
-### 2. Fine-tuning on CIFAR-10
-Load the pre-trained weights and fine-tune on the original task with a smaller learning rate.
-```bash
-python main.py --model finetune --epochs 50 --lr 0.0005 --no-scheduler 
-```
+* [x] **[ ~~Kian~~ Vinn]** **CIFAR-100 Prep:** Load CIFAR-100 and adapt the "Best Architecture" for **20 class outputs**.
+* [~] **[ ~~Kian~~ Vinn]** **Scratch Training:** Train **CIFAR100_model** until convergence using original hyperparameters. note: until convergence? I didn't do that oop
+* [x] **[Vinn]** **Fine-Tuning:** Revert to 10 outputs; fine-tune on CIFAR-10 at half speed ($\text{LR}=0.0005$).
+* [x] **[Vinn]** **Benchmarking:** Final Test of "Scratch Best Model" vs. **CIFAR10_pretrained**. *Required: Confusion Matrices for both.*
 
 ---
 
-## Final Benchmarking
-Run the final evaluation on the **held-out test set** to generate your official accuracy and confusion matrix for the report.
-```bash
-python main.py --model medium --test-model
-```
+### 🌍 Phase 4: Cross-Dataset Expansion (Tiny ImageNet)
+
+* [ ] **[Vinn]** **Choice 7 (15 pts):** Load **Tiny ImageNet**, filter for classes overlapping with CIFAR-10, and resize to 32x32.
+* [x] **[Vinn]** **Evaluation:** Test your best model on this new data. *Required: Accuracy + Confusion Matrix.*
+* [ ] **[Kian]** **Choice 8 (5 pts):** Fine-tune the best CIFAR-10 model on these Tiny ImageNet overlapping classes. Compare against Choice 7.
+
+---
+
+### 📝 Phase 5: Final Report & Delivery
+
+* [ ] **[Vinn]** **Visuals & Tables:** Loss/Acc graphs (all models), LR graph, t-SNE plot, and the Top-1 Accuracy summary table.
+* [ ] **[Vinn]** **Architectural Discussion:** Write the pair-wise comparisons (Baseline $\rightarrow$ M1 $\rightarrow$ M2) and explain the auxiliary output findings.
+* [ ] **[Kian]** **Logic Justification:** Explain the choice of 80/20 split, the data augmentation impact, and the hyperparameter search results.
+* [ ] **[Both]** **Final Polish:** Ensure the report is 2–5 pages and covers the "Generalization" discussion (Train vs. Val vs. Test performance).
+
+---
+
+# CNN Architectural Study: CIFAR-10 & CIFAR-100
+
+This repository contains a structured experimental study on Convolutional Neural Networks (CNNs) using **PyTorch**. The project transitions from a classic **LeNet-5** baseline to optimized variants, incorporating transfer learning and rigorous validation strategies.
+
+---
+
+## 🎯 Project Goals
+* **Model Design:** Recreating and modifying CNN architectures for color image classification.
+* **Optimization:** Comparing the impact of structural changes (pooling, dropout, layers) on model convergence.
+* **Transfer Learning:** Evaluating how pre-training on **CIFAR-100** influences performance on **CIFAR-10**.
+
+
+
+---
+
+## 📊 Dataset & Setup
+The experiments are conducted on the **CIFAR** datasets ($32 \times 32$ images):
+* **Training Set:** 50,000 images, further split into a custom **Validation set** (motivated by a specific ratio) to prevent test-set leakage during tuning.
+* **Test Set:** 10,000 images used strictly for final benchmarking and confusion matrix generation.
+
+
+
+---
+
+## 🏗️ Architecture Evolution
+1.  **Baseline (CIFAR10_lenet):** Standard LeNet-5 adapted for 3-channel input, utilizing `kaiming_uniform` initialization and the Adam optimizer.
+2.  **Variants (Model 1 & 2):** Iterative improvements where only one structural aspect is changed per version to isolate performance drivers.
+3.  **Pre-trained (CIFAR10_pretrained):** Best architecture trained on CIFAR-100 (20 classes) and fine-tuned for CIFAR-10 with a reduced learning rate.
+
+---
 
 ## 🛠️ Requirements & Installation
 This project requires **Python 3.x** and the following libraries:

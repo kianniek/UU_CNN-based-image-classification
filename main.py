@@ -3,7 +3,6 @@ Main entry point for CIFAR-10 CNN training and evaluation.
 """
 
 import os
-import json
 import argparse
 import torch
 import torch.nn as nn
@@ -246,13 +245,13 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
     
     if args.model == "finetune":
         # load cifar100 model weights
-        model.load_state_dict(torch.load('results\\cifar100_20_0.001.pth'))
+        model.load_state_dict(torch.load('results\\cifar100.pth'))
         
         for name, layer in model.named_children():
             # Freezes first layers
             if name == 'features':
-                for parameter in layer.parameters():
-                    parameter.requires_grad = False   
+                for parameters in layer[:-3].parameters():
+                    parameters.requires_grad = False
             # Changes last layer to 10 outputs
             if name == 'classifier':
                 last_layer = layer.pop(len(layer)-1)
@@ -283,7 +282,7 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
 
     # Final test evaluation
     criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc = eval(model, test_loader, criterion, device)
+    test_loss, test_acc = evaluate(model, test_loader, criterion, device)
     
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
@@ -307,16 +306,24 @@ def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
         )
 
     model = get_model(args.model)
+    # get model waits for model specified & load them
     
-    # get model waits for model specified
-    # load model weights
+    path_name = os.path.join("results", f'{args.model}.pth')
+    weights = torch.load(path_name)
+    model.load_state_dict(torch.load(path_name))
     
-    # run test on test set
-    # generate usual stuff
+    model.to(device)
     
+    label = f"{args.model}{tag}"
+    print(f"\n{'='*60}")
+    print(f"Testing: {label}  |  augmentation={'ON' if augment else 'OFF'}")
+    print(f"{'='*60}")
+    print(model)
     # separate test function cause i dont want to retrain a model everytime
     criterion = torch.nn.CrossEntropyLoss()
     test_loss, test_acc, conf_m = test(model, test_loader, criterion, device)
+    print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
+
     return test_loss, test_acc, conf_m
 
 def main():
@@ -347,18 +354,21 @@ def main():
 
         # Plot LR schedule (same for both runs)
         plot_lr_schedule(history_aug["lr"])
-    elif args.test:
-        # run test module only
-        pass
+    elif args.test_model:
+        # ---- single test run ----
+        augment = not args.no_augment
+        history, _, conf_m = _run_tests(args, augment==augment, device=device)
+        
+        plot_confusion_matrix(conf_m)
+        
     else:
         # ---- Normal single training run ----
         augment = not args.no_augment
-        history, _, model_predictions, correct_labels = _run_training(args, augment=augment, device=device)
+        history, _ = _run_training(args, augment=augment, device=device)
 
         # Choice 1 — Plot LR decay vs. Epochs
         plot_lr_schedule(history["lr"])
         plot_training_curves(history, model_name=args.model)
-        plot_confusion_matrix(conf_m)
 
 
 if __name__ == "__main__":
