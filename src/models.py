@@ -184,7 +184,7 @@ class Cifar10CNN(nn.Module):
             nn.ReLU(),
             nn.Linear(120, 84),
             nn.ReLU(),
-            nn.Linear(84, 20), # Layer 6: Output (1 120 => 10 32x32)
+            nn.Linear(84, 10), # Layer 6: Output (1 120 => 10 32x32)
         )
 
         _apply_kaiming_init(self)
