@@ -141,6 +141,10 @@ Quantify the impact of transformations (flips, crops, etc.) on model generalizat
 python main.py --model medium --epochs 100 --compare-augmentation
 ```
 
+### Choice 6: t-SNE output
+```bash
+python main.py --model medium --test-model --kfold 0
+```
 ---
 
 ## Phase 3: Transfer Learning
@@ -155,7 +159,7 @@ python main.py --model cifar100 --epochs 150
 ### 2. Fine-tuning on CIFAR-10
 Load the pre-trained weights and fine-tune on the original task with a smaller learning rate.
 ```bash
-python main.py --model finetune --epochs 50 --lr 0.0005
+python main.py --model finetune --epochs 50 --lr 0.0005 --no-scheduler 
 ```
 
 ---
@@ -226,9 +230,9 @@ python main.py --model deep --epochs 100
 ### 📝 Phase 5: Final Report & Delivery
 
 * [x] **[Vinn]** **Visuals & Tables:** Loss/Acc graphs (all models), LR graph, t-SNE plot, and the Top-1 Accuracy summary table.
-* [ ] **[Vinn]** **Architectural Discussion:** Write the pair-wise comparisons (Baseline $\rightarrow$ M1 $\rightarrow$ M2) and explain the auxiliary output findings.
-* [ ] **[Kian]** **Logic Justification:** Explain the choice of 80/20 split, the data augmentation impact, and the hyperparameter search results.
-* [ ] **[Both]** **Final Polish:** Ensure the report is 2–5 pages and covers the "Generalization" discussion (Train vs. Val vs. Test performance).
+* [x] **[Vinn]** **Architectural Discussion:** Write the pair-wise comparisons (Baseline $\rightarrow$ M1 $\rightarrow$ M2) and explain the auxiliary output findings.
+* [x] **[Kian]** **Logic Justification:** Explain the choice of 80/20 split, the data augmentation impact, and the hyperparameter search results.
+* [x] **[Both]** **Final Polish:** Ensure the report is 2–5 pages and covers the "Generalization" discussion (Train vs. Val vs. Test performance).
 
 ---
 

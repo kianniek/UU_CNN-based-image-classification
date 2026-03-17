@@ -485,8 +485,8 @@ def hyperparameter_search(
     print("-" * 80)
     for i, result in enumerate(results, 1):
         print(f"{i:<4} {result['optimizer']:<10} {result['learning_rate']:<10.1e} "
-              f"{result['weight_decay']:<10.1e} {result['batch_size']:<10} "
-              f"{result['val_accuracy']:<10.2f} {result['val_loss']:<10.4f}")
+            f"{result['weight_decay']:<10.1e} {result['batch_size']:<10} "
+            f"{result['val_accuracy']:<10.2f} {result['val_loss']:<10.4f}")
 
     return {"all_results": results, "best_combination": results[0] if results else None}
 

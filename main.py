@@ -22,7 +22,7 @@ from src.data_loader import (
     CIFAR100_STD,
 )
 from src.models import get_model, MODEL_REGISTRY
-from src.test import test, test_multi_output
+from src.test import test
 from src.train import train_model, evaluate
 from src.visualize import (
     plot_lr_schedule,
@@ -30,7 +30,7 @@ from src.visualize import (
     plot_augmentation_comparison,
     plot_confusion_matrix,
     plot_tsne,
-    plot_multiple_out
+    plot_kfold_vs_fixed_comparison,
 )
 
 
@@ -116,11 +116,6 @@ def parse_args():
         "--test-model",
         action="store_true",
         help="run test on model with loaded weights",
-    )
-    parser.add_argument(
-        "--multi-output",
-        action="store_true",
-        help="obtain multiple outputs from the model"
     )
     return parser.parse_args()
 
@@ -219,7 +214,7 @@ def _run_hyperparameter_search(args, device: torch.device):
 def _run_kfold_vs_fixed_comparison(args, device: torch.device):
     """Run fixed split training and k-fold CV, then save a side-by-side summary."""
     augment = not args.no_augment
-    fixed_history, _, _ = _run_training(args, augment=augment, device=device, tag="_fixedsplit")
+    fixed_history, _ = _run_training(args, augment=augment, device=device, tag="_fixedsplit")
     cv_results = _run_kfold_cv(args, device)
 
     comparison = {
@@ -270,12 +265,13 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
     model = get_model(args.model)
     
     if args.model == "finetune":
+        # Grab the model for CIFAR 100 specifically
+        model = get_model("cifar100")
         # load cifar100 model weights
         model.load_state_dict(torch.load('results\\cifar100.pth'))
         
         for name, layer in model.named_children():
             # Freezes the first few layers (convolution 1, ReLu, pooling 1)
-            # could have done this a lot nicer but didn't feel like retraining cifar100 for this 
             
             if name == 'features':
                 feature_layers = list(layer.children())
@@ -334,8 +330,8 @@ def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
         )
 
     model = get_model(args.model)
-    # get model waits for model specified & load them
     
+    # get model weights for model specified & load them
     path_name = os.path.join("results", f'{args.model}.pth')
     weights = torch.load(path_name)
     model.load_state_dict(weights)
@@ -347,51 +343,14 @@ def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
     print(f"Testing: {label}  |  augmentation={'ON' if augment else 'OFF'}")
     print(f"{'='*60}")
     print(model)
+    
+    # run model with test function
     
     criterion = torch.nn.CrossEntropyLoss()
     test_loss, test_acc, conf_m, tsne_coord, labels = test(model, test_loader, criterion, device)
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
     return test_loss, test_acc, conf_m, tsne_coord, labels
-
-# Separate method that only runs the model on test set
-def _run_multi(args, augment: bool, device: torch.device, tag: str = ""):
-    """Helper: load data, build model, train, return history."""
-    if args.model == "cifar100":
-        _, _, test_loader = load_cifar100(
-            data_dir=args.data_dir,
-            batch_size=args.batch_size,
-            augment_train=augment,
-            seed=args.seed,
-        )
-    else:
-        _, _, test_loader = load_cifar10(
-            data_dir=args.data_dir,
-            batch_size=args.batch_size,
-            augment_train=augment,
-            seed=args.seed,
-        )
-
-    model = get_model(args.model)
-    # get model waits for model specified & load them
-    
-    path_name = os.path.join("results", f'{args.model}.pth')
-    weights = torch.load(path_name)
-    model.load_state_dict(weights)
-    
-    model.to(device)
-    
-    label = f"{args.model}{tag}"
-    print(f"\n{'='*60}")
-    print(f"Testing: {label}  |  augmentation={'ON' if augment else 'OFF'}")
-    print(f"{'='*60}")
-    print(model)
-    
-    criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc, outputs = test_multi_output(model, test_loader, criterion, device)
-    print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
-
-    return test_loss, test_acc, outputs
 
 def main():
     args = parse_args()
@@ -432,15 +391,10 @@ def main():
         # single test run
         augment = not args.no_augment
         
-        # Note: choice task 4
-        if args.multi_output:
-            history, _, outputs = _run_multi(args, augment=augment, device= device)
-            # plot_multiple_out(outputs['conv1'], 'conv1')
-            # plot_multiple_out(outputs['conv2'], 'conv2')
-        else:
-            history, _, conf_m, tsne_coord, labels = _run_tests(args, augment=augment, device=device)
-            plot_confusion_matrix(conf_m, args.model)
-            plot_tsne(tsne_coord, labels, CIFAR10_CLASSES, args.model)
+        # ---- Run Model on Test Data only (requires pretrained model) ----
+        history, _, conf_m, tsne_coord, labels = _run_tests(args, augment=augment, device=device)
+        plot_confusion_matrix(conf_m, args.model)
+        plot_tsne(tsne_coord, labels, CIFAR10_CLASSES, args.model)
 
     else:
         # ---- Normal single training run ----
