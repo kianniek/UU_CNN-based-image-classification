@@ -3,6 +3,7 @@ Main entry point for CIFAR-10 CNN training and evaluation.
 """
 
 import os
+import json
 import argparse
 import torch
 import torch.nn as nn
@@ -27,7 +28,8 @@ from src.visualize import (
     plot_lr_schedule,
     plot_training_curves,
     plot_augmentation_comparison,
-    plot_confusion_matrix
+    plot_confusion_matrix,
+    plot_kfold_vs_fixed_comparison,
 )
 
 
@@ -64,6 +66,11 @@ def parse_args():
         type=int,
         default=5,
         help="Enable k-fold cross-validation with specified k (0 to disable)",
+    )
+    parser.add_argument(
+        "--compare-kfold-split",
+        action="store_true",
+        help="Run both fixed train/val and k-fold CV, then save a side-by-side comparison",
     )
 
     # Hyperparameter search
@@ -203,6 +210,40 @@ def _run_hyperparameter_search(args, device: torch.device):
     return search_results
 
 
+def _run_kfold_vs_fixed_comparison(args, device: torch.device):
+    """Run fixed split training and k-fold CV, then save a side-by-side summary."""
+    augment = not args.no_augment
+    fixed_history, _, _ = _run_training(args, augment=augment, device=device, tag="_fixedsplit")
+    cv_results = _run_kfold_cv(args, device)
+
+    comparison = {
+        "model": args.model,
+        "k": args.kfold,
+        "fixed": {
+            "best_val_acc": float(max(fixed_history["val_acc"])),
+            "best_val_loss": float(min(fixed_history["val_loss"])),
+            "final_val_acc": float(fixed_history["val_acc"][-1]),
+            "final_val_loss": float(fixed_history["val_loss"][-1]),
+            "stopped_epoch": int(fixed_history.get("stopped_epoch", len(fixed_history["val_acc"]))),
+        },
+        "kfold": {
+            "mean_accuracy": float(cv_results["mean_accuracy"]),
+            "std_accuracy": float(cv_results["std_accuracy"]),
+            "mean_loss": float(cv_results["mean_loss"]),
+            "std_loss": float(cv_results["std_loss"]),
+        },
+    }
+
+    os.makedirs("results", exist_ok=True)
+    out_path = os.path.join("results", f"{args.model}_kfold_vs_fixed_comparison.json")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(comparison, f, indent=2)
+    print(f"K-fold vs fixed comparison saved → {out_path}")
+
+    plot_kfold_vs_fixed_comparison(comparison, model_name=args.model)
+    return comparison
+
+
 
 
 
@@ -325,7 +366,9 @@ def main():
         print(f"Classes: {CIFAR10_CLASSES}")
 
     # Priority: k-fold CV, then hyperparameter search, then other modes
-    if args.kfold > 0:
+    if args.compare_kfold_split:
+        _run_kfold_vs_fixed_comparison(args, device)
+    elif args.kfold > 0:
         _run_kfold_cv(args, device)
     elif args.hyperparameter_search:
         _run_hyperparameter_search(args, device)

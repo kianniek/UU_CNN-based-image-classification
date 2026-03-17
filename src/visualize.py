@@ -280,7 +280,53 @@ def plot_hyperparameter_search(results, model_name: str = "model", save_dir: Opt
     fig.savefig(fname, dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Hyperparameter search plot saved → {fname}")
-    
+
+
+def plot_kfold_vs_fixed_comparison(
+    comparison: Dict[str, Dict[str, float]],
+    model_name: str = "model",
+    save_dir: Optional[str] = None,
+) -> None:
+    """Plot a compact side-by-side comparison of fixed split vs k-fold CV.
+
+    Expected keys
+    -------------
+    comparison["fixed"]: best_val_acc, best_val_loss
+    comparison["kfold"]: mean_accuracy, std_accuracy, mean_loss, std_loss
+    """
+    if save_dir is None:
+        save_dir = RESULTS_DIR
+    _ensure_dir(save_dir)
+
+    fixed = comparison["fixed"]
+    kfold = comparison["kfold"]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
+
+    # Accuracy comparison
+    ax1.bar(["Fixed split", "5-fold CV"],
+            [fixed["best_val_acc"], kfold["mean_accuracy"]],
+            yerr=[0.0, kfold["std_accuracy"]],
+            color=["#6baed6", "#31a354"], alpha=0.85, capsize=6)
+    ax1.set_ylabel("Validation Accuracy (%)")
+    ax1.set_title(f"{model_name} - Accuracy")
+    ax1.grid(True, axis="y", alpha=0.3)
+
+    # Loss comparison
+    ax2.bar(["Fixed split", "5-fold CV"],
+            [fixed["best_val_loss"], kfold["mean_loss"]],
+            yerr=[0.0, kfold["std_loss"]],
+            color=["#9ecae1", "#74c476"], alpha=0.85, capsize=6)
+    ax2.set_ylabel("Validation Loss")
+    ax2.set_title(f"{model_name} - Loss")
+    ax2.grid(True, axis="y", alpha=0.3)
+
+    fig.tight_layout()
+    fname = os.path.join(save_dir, f"{model_name}_kfold_vs_fixed_comparison.png")
+    fig.savefig(fname, dpi=150)
+    plt.close(fig)
+    print(f"K-fold vs fixed comparison plot saved → {fname}")
+
 def plot_confusion_matrix(matrix, class_names: Optional[List[str]] = None, model_name: str = "model", save_dir: Optional[str] = None):
     """Plot and save a confusion matrix heatmap.
 
