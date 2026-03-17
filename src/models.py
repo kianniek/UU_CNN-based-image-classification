@@ -245,6 +245,7 @@ class Cifar10CNN(nn.Module):
 
 # Registry helper
 # Note: The Simple, Medium and Deep models have been named as such to reflect the increasing complexity of the architecture, and not necessarily the performance.
+# Rename to: CIFAR10_lenet, CIFAR10_model1, CIFAR10_model2, CIFAR100_lenet, CIFAR10_finetune and rerun
 MODEL_REGISTRY = {
     "simple": SimpleCNN,
     "medium": MediumCNN,

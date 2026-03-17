@@ -420,7 +420,7 @@ def main():
     elif args.hyperparameter_search:
         _run_hyperparameter_search(args, device)
     elif args.compare_augmentation:
-        # ---- Choice 5: train with & without augmentation, then compare ----
+        # Choice 5: train with & without augmentation, then compare 
         history_aug, _, _ = _run_training(args, augment=True, device=device, tag="_aug")
         history_no_aug, _, _ = _run_training(args, augment=False, device=device, tag="_noaug")
 
@@ -431,7 +431,7 @@ def main():
         # Plot LR schedule (same for both runs)
         plot_lr_schedule(history_aug["lr"])
     elif args.test_model:
-        # ---- single test run ----
+        # single test run
         augment = not args.no_augment
         
         # Note: choice task 4
