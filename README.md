@@ -102,8 +102,19 @@ python main.py --model simple --epochs 100
 
 ---
 
-## Architecture Evolution
-Iteratively improve the model by testing deeper or wider architectures.
+### 🧪 Phase 2: Advanced Validation & Optimization
+
+* [x] **[Kian]** **Choice 2 (10 pts):** Implement **5-fold Cross-Validation** for the baseline. Compare results to the fixed 80/20 split.
+* [x] **[Kian]** **Choice 3 (10 pts):** Perform **Evolutionary Hyperparameter Search**.
+* Evaluate 3 Optimizers, 3 LRs, 2 Weight Decays, and 2 Batch Sizes.
+
+
+* [ ] **[Vinn]** **Choice 4 (15 pts):** Add **Auxiliary Output Layers** to Conv/Pool layers.
+* *Required: Extract and explain class predictions from these intermediate stages.*
+
+
+* [ ] **[Vinn]** **Choice 6 (10 pts):** Generate **t-SNE visualizations** of the final FC layer.
+* *Required: Analyze clusters vs. expected class confusions.*
 
 ### 1. Medium CNN
 ```bash
@@ -130,7 +141,7 @@ python main.py --model deep --epochs 100
 
 * [ ] **[Vinn]** **Choice 7 (15 pts):** Load **Tiny ImageNet**, filter for classes overlapping with CIFAR-10, and resize to 32x32.
 * [x] **[Vinn]** **Evaluation:** Test your best model on this new data. *Required: Accuracy + Confusion Matrix.*
-* [ ] **[Kian]** **Choice 8 (5 pts):** Fine-tune the best CIFAR-10 model on these Tiny ImageNet overlapping classes. Compare against Choice 7.
+* [ ] **[Vinn]** **Choice 8 (5 pts):** Fine-tune the best CIFAR-10 model on these Tiny ImageNet overlapping classes. Compare against Choice 7.
 
 ---
 

@@ -150,6 +150,7 @@ def _run_kfold_cv(args, device: torch.device):
         weight_decay=0.0,
         batch_size=args.batch_size,
         seed=args.seed,
+        early_stopping=not args.no_early_stopping,
     )
 
     from src.visualize import plot_kfold_results
@@ -188,8 +189,8 @@ def _run_hyperparameter_search(args, device: torch.device):
         train_loader,
         val_loader,
         device,
-        optimizers=["adam", "sgd"],
-        learning_rates=[1e-3, 1e-4],
+        optimizers=["adam", "sgd", "rmsprop"],
+        learning_rates=[1e-3, 1e-4, 1e-5],
         weight_decays=[0.0, 1e-4],
         batch_sizes=[16, 32],
         epochs=args.epochs,

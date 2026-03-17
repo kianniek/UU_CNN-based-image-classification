@@ -94,7 +94,7 @@ def train_model(
     scheduler_step_size: int = 5,
     scheduler_gamma: float = 0.5,
     save_path: Optional[str] = None,
-    early_stopping: bool = False,
+    early_stopping: bool = True,
     patience: int = 3,
     monitor: str = "val_loss",
     max_epochs: int = 200,
