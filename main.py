@@ -22,14 +22,15 @@ from src.data_loader import (
     CIFAR100_STD,
 )
 from src.models import get_model, MODEL_REGISTRY
-from src.test import test
+from src.test import test, test_multi_output
 from src.train import train_model, evaluate
 from src.visualize import (
     plot_lr_schedule,
     plot_training_curves,
     plot_augmentation_comparison,
     plot_confusion_matrix,
-    plot_kfold_vs_fixed_comparison,
+    plot_tsne,
+    plot_multiple_out
 )
 
 
@@ -115,6 +116,11 @@ def parse_args():
         "--test-model",
         action="store_true",
         help="run test on model with loaded weights",
+    )
+    parser.add_argument(
+        "--multi-output",
+        action="store_true",
+        help="obtain multiple outputs from the model"
     )
     return parser.parse_args()
 
@@ -272,13 +278,15 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         model.load_state_dict(torch.load('results\\cifar100.pth'))
         
         for name, layer in model.named_children():
-            # Freezes first layers
-            if name == 'features' and isinstance(layer, nn.Sequential):
-                for parameters in layer[:-3].parameters():  # type: ignore[index]
+            # Freezes the first few layers (convolution 1, ReLu, pooling 1)
+            # could have done this a lot nicer but didn't feel like retraining cifar100 for this 
+            
+            if name == 'features':
+                for parameters in layer[:-3].parameters():
                     parameters.requires_grad = False
             # Changes last layer to 10 outputs
-            if name == 'classifier' and isinstance(layer, nn.Sequential):
-                layer[-1] = nn.Linear(84, 10)  # type: ignore[index]
+            if name == 'output':
+                model.output = nn.Linear(84,10)
                 
     model.to(device)
         
@@ -313,14 +321,14 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
 def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
     if args.model == "cifar100":
-        train_loader, val_loader, test_loader = load_cifar100(
+        _, _, test_loader = load_cifar100(
             data_dir=args.data_dir,
             batch_size=args.batch_size,
             augment_train=augment,
             seed=args.seed,
         )
     else:
-        train_loader, val_loader, test_loader = load_cifar10(
+        _, _, test_loader = load_cifar10(
             data_dir=args.data_dir,
             batch_size=args.batch_size,
             augment_train=augment,
@@ -332,7 +340,7 @@ def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
     
     path_name = os.path.join("results", f'{args.model}.pth')
     weights = torch.load(path_name)
-    model.load_state_dict(torch.load(path_name))
+    model.load_state_dict(weights)
     
     model.to(device)
     
@@ -341,12 +349,51 @@ def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
     print(f"Testing: {label}  |  augmentation={'ON' if augment else 'OFF'}")
     print(f"{'='*60}")
     print(model)
-    # separate test function cause i dont want to retrain a model everytime
+    
     criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc, conf_m = test(model, test_loader, criterion, device)
+    test_loss, test_acc, conf_m, tsne_coord, labels = test(model, test_loader, criterion, device)
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
-    return test_loss, test_acc, conf_m
+    return test_loss, test_acc, conf_m, tsne_coord, labels
+
+# Separate method that only runs the model on test set
+def _run_multi(args, augment: bool, device: torch.device, tag: str = ""):
+    """Helper: load data, build model, train, return history."""
+    if args.model == "cifar100":
+        _, _, test_loader = load_cifar100(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=augment,
+            seed=args.seed,
+        )
+    else:
+        _, _, test_loader = load_cifar10(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=augment,
+            seed=args.seed,
+        )
+
+    model = get_model(args.model)
+    # get model waits for model specified & load them
+    
+    path_name = os.path.join("results", f'{args.model}.pth')
+    weights = torch.load(path_name)
+    model.load_state_dict(weights)
+    
+    model.to(device)
+    
+    label = f"{args.model}{tag}"
+    print(f"\n{'='*60}")
+    print(f"Testing: {label}  |  augmentation={'ON' if augment else 'OFF'}")
+    print(f"{'='*60}")
+    print(model)
+    
+    criterion = torch.nn.CrossEntropyLoss()
+    test_loss, test_acc, outputs = test_multi_output(model, test_loader, criterion, device)
+    print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
+
+    return test_loss, test_acc, outputs
 
 def main():
     args = parse_args()
@@ -386,9 +433,16 @@ def main():
     elif args.test_model:
         # ---- single test run ----
         augment = not args.no_augment
-        test_loss, test_acc, conf_m = _run_tests(args, augment=augment, device=device)
-
-        plot_confusion_matrix(conf_m, model_name=args.model)
+        
+        # Note: choice task 4
+        if args.multi_output:
+            history, _, outputs = _run_multi(args, augment=augment, device= device)
+            plot_multiple_out(outputs['conv1'], 'conv1')
+            plot_multiple_out(outputs['conv2'], 'conv2')
+        else:
+            history, _, conf_m, tsne_coord, labels = _run_tests(args, augment=augment, device=device)
+            plot_confusion_matrix(conf_m)
+            plot_tsne(tsne_coord, labels, CIFAR10_CLASSES)
 
     else:
         # ---- Normal single training run ----

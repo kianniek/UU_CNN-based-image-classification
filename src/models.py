@@ -97,7 +97,47 @@ class MediumCNN(nn.Module):
         x = self.fully_connected(x)
         x = self.output(x)
         return x
-    
+
+# Model 2.5 — Choice Task 4 multiple outputs 
+# changing the architecture a bit so I can get multiple layers
+class MultiOutputCNN(nn.Module):
+
+    def __init__(self, num_classes: int = 10):
+        super().__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(3, 6, kernel_size=5, padding=0, stride=1), # Layer 1: Convolution (1 32x32 => 6 28x28)
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2), # Layer 2: Pooling (6 28x28 => 6 14x14)
+        )
+        
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(6, 16, kernel_size=5, padding=0), # Layer 3: Convolution (6 14x14 => 16 10x10)
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2), # Layer 4: Pooling (16 10x10 => 16 5x5)
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(400, 120), # Layer 5: Convolution/Fully  Connected (16 5x5 => 1 120)
+            nn.Dropout(p=0.2),
+            nn.ReLU(),
+        )
+        self.fully_connected = nn.Sequential(
+            nn.Linear(120, 84),
+            nn.ReLU(),
+        )
+
+        self.output = nn.Linear(84, num_classes)
+
+        _apply_kaiming_init(self)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = x.view(x.size(0), -1) # Flattens feature maps
+        x = self.classifier(x)
+        x = self.fully_connected(x)
+        x = self.output(x)
+        return x
+
 # Model 3 — LeNet-5 with Dropout and Averageg Pooling and a bigger kernel
 # Reasoning: Dropout is essentially dropping a % of the neurons, prevents overfitting
 class DeepCNN(nn.Module):
@@ -202,45 +242,13 @@ class Cifar10CNN(nn.Module):
         x = self.fully_connected(x)
         x = self.output(x)
         return x
-    
-# model 5 - CIFAR10-Pretrained
-# Uses model 2's architecture with the weights from model 4. 
-class Cifar10CNN(nn.Module):
-
-    def __init__(self, num_classes: int = 10):
-        super().__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 6, kernel_size=5, padding=0, stride=1), # Layer 1: Convolution (1 32x32 => 6 28x28)
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2), # Layer 2: Pooling (6 28x28 => 6 14x14)
-
-            nn.Conv2d(6, 16, kernel_size=5, padding=0), # Layer 3: Convolution (6 14x14 => 16 10x10)
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2), # Layer 4: Pooling (16 10x10 => 16 5x5)
-            
-        )
-        self.classifier = nn.Sequential(
-            nn.Linear(400, 120), # Layer 5: Convolution/Fully  Connected (16 5x5 => 1 120)
-            nn.Dropout(p=0.2),
-            nn.ReLU(),
-            nn.Linear(120, 84),
-            nn.ReLU(),
-            nn.Linear(84, 10), # Layer 6: Output (1 120 => 10 32x32)
-        )
-
-        _apply_kaiming_init(self)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.features(x)
-        x = x.view(x.size(0), -1) # Flattens feature maps
-        x = self.classifier(x)
-        return x
 
 # Registry helper
 # Note: The Simple, Medium and Deep models have been named as such to reflect the increasing complexity of the architecture, and not necessarily the performance.
 MODEL_REGISTRY = {
     "simple": SimpleCNN,
     "medium": MediumCNN,
+    "multi": MultiOutputCNN,
     "deep": DeepCNN,
     "cifar100":CifarCNN,
     "finetune":Cifar10CNN
