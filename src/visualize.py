@@ -279,7 +279,7 @@ def plot_hyperparameter_search(results, model_name: str = "model", save_dir: Opt
     fig.savefig(fname, dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Hyperparameter search plot saved → {fname}")
-    
+
 def plot_confusion_matrix(matrix, class_names: Optional[List[str]] = None, model_name: str = "model", save_dir: Optional[str] = None):
     """Plot and save a confusion matrix heatmap.
 
