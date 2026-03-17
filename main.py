@@ -6,7 +6,7 @@ import os
 import argparse
 import torch
 import torch.nn as nn
-
+import numpy as np
 
 
 from src.data_loader import (
@@ -57,9 +57,22 @@ def parse_args():
     parser.add_argument(
         "--seed", type=int, default=42, help="Random seed (default: 42)"
     )
-    
-    ## TODO: Add argument for testing model 
-    
+
+    # K-fold CV
+    parser.add_argument(
+        "--kfold",
+        type=int,
+        default=5,
+        help="Enable k-fold cross-validation with specified k (0 to disable)",
+    )
+
+    # Hyperparameter search
+    parser.add_argument(
+        "--hyperparameter-search",
+        action="store_true",
+        help="Perform hyperparameter grid search",
+    )
+
     # Choice 1 — LR Scheduler
     parser.add_argument(
         "--no-scheduler",
@@ -137,7 +150,6 @@ def _run_kfold_cv(args, device: torch.device):
         weight_decay=0.0,
         batch_size=args.batch_size,
         seed=args.seed,
-        early_stopping=not args.no_early_stopping,
     )
 
     from src.visualize import plot_kfold_results
@@ -176,8 +188,8 @@ def _run_hyperparameter_search(args, device: torch.device):
         train_loader,
         val_loader,
         device,
-        optimizers=["adam", "sgd", "rmsprop"],
-        learning_rates=[1e-3, 1e-4, 1e-5],
+        optimizers=["adam", "sgd"],
+        learning_rates=[1e-3, 1e-4],
         weight_decays=[0.0, 1e-4],
         batch_sizes=[16, 32],
         epochs=args.epochs,
@@ -190,38 +202,8 @@ def _run_hyperparameter_search(args, device: torch.device):
     return search_results
 
 
-def _run_kfold_vs_fixed_comparison(args, device: torch.device):
-    """Run fixed split training and k-fold CV, then save a side-by-side summary."""
-    augment = not args.no_augment
-    fixed_history, _ = _run_training(args, augment=augment, device=device, tag="_fixedsplit")
-    cv_results = _run_kfold_cv(args, device)
 
-    comparison = {
-        "model": args.model,
-        "k": args.kfold,
-        "fixed": {
-            "best_val_acc": float(max(fixed_history["val_acc"])),
-            "best_val_loss": float(min(fixed_history["val_loss"])),
-            "final_val_acc": float(fixed_history["val_acc"][-1]),
-            "final_val_loss": float(fixed_history["val_loss"][-1]),
-            "stopped_epoch": int(fixed_history.get("stopped_epoch", len(fixed_history["val_acc"]))),
-        },
-        "kfold": {
-            "mean_accuracy": float(cv_results["mean_accuracy"]),
-            "std_accuracy": float(cv_results["std_accuracy"]),
-            "mean_loss": float(cv_results["mean_loss"]),
-            "std_loss": float(cv_results["std_loss"]),
-        },
-    }
 
-    os.makedirs("results", exist_ok=True)
-    out_path = os.path.join("results", f"{args.model}_kfold_vs_fixed_comparison.json")
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(comparison, f, indent=2)
-    print(f"K-fold vs fixed comparison saved → {out_path}")
-
-    plot_kfold_vs_fixed_comparison(comparison, model_name=args.model)
-    return comparison
 
 def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
@@ -253,10 +235,8 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
                 for parameters in layer[:-3].parameters():
                     parameters.requires_grad = False
             # Changes last layer to 10 outputs
-            if name == 'classifier':
-                last_layer = layer.pop(len(layer)-1)
-                last_layer = nn.Linear(84,10)
-                layer.append(last_layer)
+            if name == 'classifier' and isinstance(layer, nn.Sequential):
+                layer[-1] = nn.Linear(84, 10)  # type: ignore[index]
                 
     model.to(device)
         
@@ -280,13 +260,13 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         save_path=f"results/{label}_{args.epochs}_{args.lr}.pth",
     )
 
-    # Final test evaluation
+    # Final test evaluation (use the test helper)
     criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc = evaluate(model, test_loader, criterion, device)
-    
+    test_loss, test_acc, conf_m = test(model, test_loader, criterion, device)
+
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
-    return history, model
+    return history, model, conf_m
 
 def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
@@ -343,10 +323,15 @@ def main():
     else:
         print(f"Classes: {CIFAR10_CLASSES}")
 
-    if args.compare_augmentation:
+    # Priority: k-fold CV, then hyperparameter search, then other modes
+    if args.kfold > 0:
+        _run_kfold_cv(args, device)
+    elif args.hyperparameter_search:
+        _run_hyperparameter_search(args, device)
+    elif args.compare_augmentation:
         # ---- Choice 5: train with & without augmentation, then compare ----
-        history_aug, _ = _run_training(args, augment=True, device=device, tag="_aug")
-        history_no_aug, _ = _run_training(args, augment=False, device=device, tag="_noaug")
+        history_aug, _, _ = _run_training(args, augment=True, device=device, tag="_aug")
+        history_no_aug, _, _ = _run_training(args, augment=False, device=device, tag="_noaug")
 
         plot_augmentation_comparison(history_aug, history_no_aug, model_name=args.model)
         plot_training_curves(history_aug, model_name=f"{args.model}_aug")
@@ -355,20 +340,17 @@ def main():
         # Plot LR schedule (same for both runs)
         plot_lr_schedule(history_aug["lr"])
     elif args.test_model:
-        # ---- single test run ----
-        augment = not args.no_augment
-        history, _, conf_m = _run_tests(args, augment==augment, device=device)
-        
-        plot_confusion_matrix(conf_m)
-        
+        # run test module only
+        pass
     else:
         # ---- Normal single training run ----
         augment = not args.no_augment
-        history, _ = _run_training(args, augment=augment, device=device)
+        history, model, conf_m = _run_training(args, augment=augment, device=device)
 
         # Choice 1 — Plot LR decay vs. Epochs
         plot_lr_schedule(history["lr"])
         plot_training_curves(history, model_name=args.model)
+        plot_confusion_matrix(conf_m, model_name=args.model)
 
 
 if __name__ == "__main__":

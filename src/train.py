@@ -11,6 +11,8 @@ Provides a training loop with:
 
 import copy
 import time
+from sklearn.model_selection import KFold
+import numpy as np
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -441,20 +443,8 @@ def hyperparameter_search(
         best_weights = None
 
         for epoch in range(epochs):
-            t0 = time.time()
             train_loss, train_acc = train_one_epoch(model, train_loader_new, criterion, optimizer, device)
             val_loss, val_acc = evaluate(model, val_loader_new, criterion, device)
-
-            elapsed = time.time() - t0
-            current_lr = optimizer.param_groups[0]["lr"]
-            print(
-                f"Combination {i+1}/{len(param_combinations)} | "
-                f"Epoch {epoch + 1:>3d}/{epochs} | "
-                f"LR {current_lr:.6f} | "
-                f"Train Loss {train_loss:.4f}  Acc {train_acc:6.2f}% | "
-                f"Val Loss {val_loss:.4f}  Acc {val_acc:6.2f}% | "
-                f"{elapsed:.1f}s"
-            )
 
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
@@ -483,8 +473,8 @@ def hyperparameter_search(
     print("-" * 80)
     for i, result in enumerate(results, 1):
         print(f"{i:<4} {result['optimizer']:<10} {result['learning_rate']:<10.1e} "
-            f"{result['weight_decay']:<10.1e} {result['batch_size']:<10} "
-            f"{result['val_accuracy']:<10.2f} {result['val_loss']:<10.4f}")
+              f"{result['weight_decay']:<10.1e} {result['batch_size']:<10} "
+              f"{result['val_accuracy']:<10.2f} {result['val_loss']:<10.4f}")
 
     return {"all_results": results, "best_combination": results[0] if results else None}
 

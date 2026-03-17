@@ -86,7 +86,11 @@
 
 ---
 
-# Project Workflow: CNN-based Image Classification
+
+
+---
+
+### 🏗️ Phase 1: Foundation & Baseline (CIFAR-10)
 
 > To ensure training until **convergence**, the `--epochs` parameter is set to a high value (100+) to allow the built-in **Early Stopping** logic (which monitors validation loss) to stop the training at the optimal point.
 

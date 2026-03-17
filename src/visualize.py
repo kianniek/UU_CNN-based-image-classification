@@ -8,9 +8,8 @@ All plots are saved to ``results/`` by default.
 import json
 import os
 from typing import Dict, List, Optional
-import sklearn as sk
 import torch
-import seaborn as se
+import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -209,15 +208,107 @@ def plot_multi_model_comparison(
     fig.savefig(save_path, dpi=150)
     plt.close(fig)
     print(f"Comparison plot saved → {save_path}")
-    
-def plot_confusion_matrix(matrix):
-    fig, ax = plt.subplots(figsize=(10,8))
 
+
+def plot_kfold_results(cv_results, model_name: str = "model", save_dir: Optional[str] = None):
+    """Plot k-fold cross-validation results."""
+    if save_dir is None:
+        save_dir = RESULTS_DIR
+    _ensure_dir(save_dir)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+    folds = range(1, len(cv_results["accuracies"]) + 1)
+
+    # Accuracy per fold
+    ax1.bar(folds, cv_results["accuracies"], color='skyblue', alpha=0.7)
+    ax1.axhline(y=cv_results["mean_accuracy"], color='red', linestyle='--', label=f'Mean: {cv_results['mean_accuracy']:.2f}%')
+    ax1.set_xlabel('Fold')
+    ax1.set_ylabel('Validation Accuracy (%)')
+    ax1.set_title(f'{model_name} - K-Fold Accuracy')
+    ax1.set_xticks(folds)
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+
+    # Loss per fold
+    ax2.bar(folds, cv_results["losses"], color='lightcoral', alpha=0.7)
+    ax2.axhline(y=cv_results["mean_loss"], color='red', linestyle='--', label=f'Mean: {cv_results['mean_loss']:.4f}')
+    ax2.set_xlabel('Fold')
+    ax2.set_ylabel('Validation Loss')
+    ax2.set_title(f'{model_name} - K-Fold Loss')
+    ax2.set_xticks(folds)
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    fname = os.path.join(save_dir, f"{model_name}_kfold_results.png")
+    fig.savefig(fname, dpi=150)
+    plt.close(fig)
+    print(f"K-Fold results plot saved → {fname}")
+
+
+def plot_hyperparameter_search(results, model_name: str = "model", save_dir: Optional[str] = None):
+    """Plot hyperparameter search results."""
+    if save_dir is None:
+        save_dir = RESULTS_DIR
+    _ensure_dir(save_dir)
+
+    # Extract data for plotting
+    accuracies = [r["val_accuracy"] for r in results["all_results"]]
+    labels = [f"{r['optimizer']}\nLR:{r['learning_rate']:.0e}\nBS:{r['batch_size']}" for r in results["all_results"]]
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    bars = ax.bar(range(len(accuracies)), accuracies, color='lightblue', edgecolor='navy', alpha=0.7)
+    ax.set_xlabel('Hyperparameter Combinations')
+    ax.set_ylabel('Validation Accuracy (%)')
+    ax.set_title(f'{model_name} - Hyperparameter Search Results')
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+
+    # Highlight best result
+    if accuracies:
+        best_idx = accuracies.index(max(accuracies))
+        bars[best_idx].set_color('gold')
+        bars[best_idx].set_edgecolor('orange')
+        bars[best_idx].set_alpha(1.0)
+
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    fname = os.path.join(save_dir, f"{model_name}_hyperparameter_search.png")
+    fig.savefig(fname, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f"Hyperparameter search plot saved → {fname}")
     
-    se.heatmap(matrix, annot=True, fmt= "d", cmap="Blues", ax=ax)
+# def plot_confusion_matrix(matrix):
+def plot_confusion_matrix(matrix, class_names: Optional[List[str]] = None, model_name: str = "model", save_dir: Optional[str] = None):
+    """Plot and save a confusion matrix heatmap.
+
+    Parameters
+    - matrix: 2D array-like confusion matrix (true x predicted)
+    - class_names: optional list of class labels for axes
+    - model_name: used in filename and title
+    - save_dir: directory to save the figure (defaults to results/)
+    """
+    if save_dir is None:
+        save_dir = RESULTS_DIR
+    _ensure_dir(save_dir)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(matrix, annot=True, fmt="d", cmap="Blues", ax=ax)
+
     ax.set_xlabel("Predicted Labels")
-    ax.set_ylabel("True labels")
-    ax.set_title("Confusion Matrix")
-    im_name = os.path.join(RESULTS_DIR, f"confusion_matrix_cifar10.png")
-    fig.savefig(im_name, dpi=150)
+    ax.set_ylabel("True Labels")
+    ax.set_title(f"{model_name} - Confusion Matrix")
+
+    if class_names is not None:
+        ax.set_xticklabels(class_names, rotation=45, ha="right")
+        ax.set_yticklabels(class_names, rotation=0)
+
+    fname = os.path.join(save_dir, f"{model_name}_confusion_matrix.png")
+    fig.tight_layout()
+    fig.savefig(fname, dpi=150)
+    plt.close(fig)
+    print(f"Confusion matrix saved → {fname}")
     
