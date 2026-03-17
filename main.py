@@ -249,10 +249,6 @@ def _run_kfold_vs_fixed_comparison(args, device: torch.device):
     plot_kfold_vs_fixed_comparison(comparison, model_name=args.model)
     return comparison
 
-
-
-
-
 def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
     
@@ -282,8 +278,10 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
             # could have done this a lot nicer but didn't feel like retraining cifar100 for this 
             
             if name == 'features':
-                for parameters in layer[:-3].parameters():
-                    parameters.requires_grad = False
+                feature_layers = list(layer.children())
+                for sublayer in feature_layers[:-3]:
+                    for parameter in sublayer.parameters():
+                        parameter.requires_grad = False
             # Changes last layer to 10 outputs
             if name == 'output':
                 model.output = nn.Linear(84,10)
@@ -312,7 +310,7 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
 
     # Final test evaluation (use the test helper)
     criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc, conf_m = test(model, test_loader, criterion, device)
+    test_loss, test_acc, conf_m, _, _ = test(model, test_loader, criterion, device)
 
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
@@ -452,7 +450,7 @@ def main():
         # Choice 1 — Plot LR decay vs. Epochs
         plot_lr_schedule(history["lr"])
         plot_training_curves(history, model_name=args.model)
-        plot_confusion_matrix(conf_m, model_name=args.model)
+        plot_confusion_matrix(conf_m)
 
 
 if __name__ == "__main__":

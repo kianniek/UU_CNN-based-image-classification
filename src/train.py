@@ -443,8 +443,20 @@ def hyperparameter_search(
         best_weights = None
 
         for epoch in range(epochs):
+            t0 = time.time()
             train_loss, train_acc = train_one_epoch(model, train_loader_new, criterion, optimizer, device)
             val_loss, val_acc = evaluate(model, val_loader_new, criterion, device)
+
+            elapsed = time.time() - t0
+            current_lr = optimizer.param_groups[0]["lr"]
+            print(
+                f"Combination {i+1}/{len(param_combinations)} | "
+                f"Epoch {epoch + 1:>3d}/{epochs} | "
+                f"LR {current_lr:.6f} | "
+                f"Train Loss {train_loss:.4f}  Acc {train_acc:6.2f}% | "
+                f"Val Loss {val_loss:.4f}  Acc {val_acc:6.2f}% | "
+                f"{elapsed:.1f}s"
+            )
 
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
