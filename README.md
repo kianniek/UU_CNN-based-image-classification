@@ -87,6 +87,10 @@
 
 ---
 
+
+
+---
+
 ### 🏗️ Phase 1: Foundation & Baseline (CIFAR-10)
 
 * [x] **[Kian]** **Data & Init:** Implement CIFAR-10 loading (80/20 split) and apply `torch.nn.init.kaiming_uniform` to all models.

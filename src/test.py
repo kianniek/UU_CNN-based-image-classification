@@ -1,50 +1,48 @@
-import copy
-import time
-from typing import Any, Dict, List, Optional, Tuple, Union
-
 import torch
-import torch.nn as nn
-import sklearn as sk
-from torch.optim import Adam
-from torch.optim.lr_scheduler import StepLR
-from torch.utils.data import DataLoader
+import numpy as np
+from typing import Tuple, List
+from sklearn.metrics import confusion_matrix
 
 
 @torch.no_grad()
 def test(
-    model: nn.Module,
-    loader: DataLoader,
-    criterion: nn.Module,
-    device: torch.device,
-) -> Tuple[float, float]:
-    """Test the model on *loader*. Returns (avg_loss, accuracy, predictions, labels)."""
-    model.eval()
-    running_loss = 0.0
-    correct = 0
-    total = 0
-    test_pred = []
-    test_label = []
-    for images, labels in loader:
-        images, labels = images.to(device), labels.to(device)
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+	model: torch.nn.Module,
+	loader: torch.utils.data.DataLoader,
+	criterion: torch.nn.Module,
+	device: torch.device,
+) -> Tuple[float, float, np.ndarray]:
+	"""Test the model on *loader*.
 
-        running_loss += loss.item() * images.size(0)
-        _, predicted = outputs.max(1)
-        total += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
-        test_pred.append(images.argmax(dim=1))
-        test_label.append(labels)
-        
-    conf_m = compute_confusion_matrix(test_pred, test_label)
-    avg_loss = running_loss / total
-    accuracy = 100.0 * correct / total
-    return avg_loss, accuracy, conf_m
+	Returns
+	-------
+	avg_loss : float
+	accuracy : float (percentage)
+	conf_m : np.ndarray (confusion matrix)
+	"""
+	model.eval()
+	running_loss = 0.0
+	correct = 0
+	total = 0
+	preds = []
+	labels_all = []
 
-def compute_confusion_matrix(predictions, labels):
-    predictions = torch.cat(predictions)
-    labels = torch.cat(labels)
-    
-    conf_m = sk.metrics.confusion_matrix(predictions.cpu().numpy(), labels.cpu().numpy())
-    
-    return conf_m
+	for images, labels in loader:
+		images, labels = images.to(device), labels.to(device)
+		outputs = model(images)
+		loss = criterion(outputs, labels)
+
+		running_loss += loss.item() * images.size(0)
+		_, predicted = outputs.max(1)
+		total += labels.size(0)
+		correct += predicted.eq(labels).sum().item()
+
+		preds.append(predicted.cpu())
+		labels_all.append(labels.cpu())
+
+	preds = torch.cat(preds)
+	labels_all = torch.cat(labels_all)
+
+	conf_m = confusion_matrix(labels_all.numpy(), preds.numpy())
+	avg_loss = running_loss / total
+	accuracy = 100.0 * correct / total
+	return avg_loss, accuracy, conf_m
