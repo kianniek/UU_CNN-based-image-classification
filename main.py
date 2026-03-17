@@ -87,6 +87,11 @@ def parse_args():
         "--scheduler-gamma", type=float, default=0.5,
         help="StepLR multiplicative factor (default: 0.5 = halve)",
     )
+    parser.add_argument(
+        "--no-early-stopping",
+        action="store_true",
+        help="Disable early stopping (enabled by default)",
+    )
     # Choice 5 — Data Augmentation comparison
     parser.add_argument(
         "--compare-augmentation",
@@ -145,6 +150,7 @@ def _run_kfold_cv(args, device: torch.device):
         weight_decay=0.0,
         batch_size=args.batch_size,
         seed=args.seed,
+        early_stopping=not args.no_early_stopping,
     )
 
     from src.visualize import plot_kfold_results
@@ -183,8 +189,8 @@ def _run_hyperparameter_search(args, device: torch.device):
         train_loader,
         val_loader,
         device,
-        optimizers=["adam", "sgd"],
-        learning_rates=[1e-3, 1e-4],
+        optimizers=["adam", "sgd", "rmsprop"],
+        learning_rates=[1e-3, 1e-4, 1e-5],
         weight_decays=[0.0, 1e-4],
         batch_sizes=[16, 32],
         epochs=args.epochs,
@@ -249,6 +255,7 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         epochs=args.epochs,
         lr=args.lr,
         use_scheduler=not args.no_scheduler,
+        early_stopping=not args.no_early_stopping,
         scheduler_step_size=args.scheduler_step,
         scheduler_gamma=args.scheduler_gamma,
         save_path=f"results/{label}_{args.epochs}_{args.lr}.pth",
