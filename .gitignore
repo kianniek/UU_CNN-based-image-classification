@@ -208,6 +208,7 @@ __marimo__/
 # PyTorch / deep learning artifacts
 # Model weights and checkpoints
 *.pt
+*.pth
 *.pth.tar
 *.ckpt
 *.ckpt.*
