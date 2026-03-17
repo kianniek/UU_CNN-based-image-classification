@@ -6,9 +6,20 @@ import os
 import argparse
 import torch
 import torch.nn as nn
+import numpy as np
 
 
-from src.data_loader import load_cifar10, CIFAR10_CLASSES, load_cifar100, CIFAR100_SUPERCLASSES
+from src.data_loader import (
+    load_cifar10,
+    CIFAR10_CLASSES,
+    load_cifar100,
+    CIFAR100_SUPERCLASSES,
+    get_transforms,
+    CIFAR10_MEAN,
+    CIFAR10_STD,
+    CIFAR100_MEAN,
+    CIFAR100_STD,
+)
 from src.models import get_model, MODEL_REGISTRY
 from src.test import test
 from src.train import train_model, evaluate
@@ -46,9 +57,22 @@ def parse_args():
     parser.add_argument(
         "--seed", type=int, default=42, help="Random seed (default: 42)"
     )
-    
-    ## TODO: Add argument for testing model 
-    
+
+    # K-fold CV
+    parser.add_argument(
+        "--kfold",
+        type=int,
+        default=5,
+        help="Enable k-fold cross-validation with specified k (0 to disable)",
+    )
+
+    # Hyperparameter search
+    parser.add_argument(
+        "--hyperparameter-search",
+        action="store_true",
+        help="Perform hyperparameter grid search",
+    )
+
     # Choice 1 — LR Scheduler
     parser.add_argument(
         "--no-scheduler",
@@ -83,6 +107,99 @@ def parse_args():
     return parser.parse_args()
 
 
+def _run_kfold_cv(args, device: torch.device):
+    """Run k-fold cross-validation."""
+    from src.train import k_fold_cross_validation
+    from torchvision import datasets
+    from src.models import get_model
+
+    # Load full training dataset
+    if args.model == "cifar100":
+        from src.data_loader import CIFAR100Super
+        full_dataset = CIFAR100Super(
+            root=args.data_dir,
+            train=True,
+            download=True,
+            transform=get_transforms(CIFAR100_MEAN, CIFAR100_STD, augment=not args.no_augment),
+        )
+        num_classes = 20
+    else:
+        full_dataset = datasets.CIFAR10(
+            root=args.data_dir,
+            train=True,
+            download=True,
+            transform=get_transforms(CIFAR10_MEAN, CIFAR10_STD, augment=not args.no_augment),
+        )
+        num_classes = 10
+
+    def model_factory():
+        return get_model(args.model, num_classes=num_classes)
+
+    cv_results = k_fold_cross_validation(
+        model_factory,
+        full_dataset,
+        device,
+        k=args.kfold,
+        epochs=args.epochs,
+        lr=args.lr,
+        weight_decay=0.0,
+        batch_size=args.batch_size,
+        seed=args.seed,
+    )
+
+    from src.visualize import plot_kfold_results
+    plot_kfold_results(cv_results, model_name=f"{args.model}_k{args.kfold}")
+
+    return cv_results
+
+
+def _run_hyperparameter_search(args, device: torch.device):
+    """Run hyperparameter search."""
+    from src.train import hyperparameter_search
+    from src.models import get_model
+
+    if args.model == "cifar100":
+        train_loader, val_loader, _ = load_cifar100(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=not args.no_augment,
+            seed=args.seed,
+        )
+        num_classes = 20
+    else:
+        train_loader, val_loader, _ = load_cifar10(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            augment_train=not args.no_augment,
+            seed=args.seed,
+        )
+        num_classes = 10
+
+    def model_factory():
+        return get_model(args.model, num_classes=num_classes)
+
+    search_results = hyperparameter_search(
+        model_factory,
+        train_loader,
+        val_loader,
+        device,
+        optimizers=["adam", "sgd"],
+        learning_rates=[1e-3, 1e-4],
+        weight_decays=[0.0, 1e-4],
+        batch_sizes=[16, 32],
+        epochs=args.epochs,
+        max_search_points=5,
+    )
+
+    from src.visualize import plot_hyperparameter_search
+    plot_hyperparameter_search(search_results, model_name=f"{args.model}_hypersearch")
+
+    return search_results
+
+
+
+
+
 def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
     
@@ -109,14 +226,12 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         
         for name, layer in model.named_children():
             # Freezes first layers
-            if name == 'features':
-                for parameters in layer[:-3].parameters():
+            if name == 'features' and isinstance(layer, nn.Sequential):
+                for parameters in layer[:-3].parameters():  # type: ignore[index]
                     parameters.requires_grad = False
             # Changes last layer to 10 outputs
-            if name == 'classifier':
-                last_layer = layer.pop(len(layer)-1)
-                last_layer = nn.Linear(84,10)
-                layer.append(last_layer)
+            if name == 'classifier' and isinstance(layer, nn.Sequential):
+                layer[-1] = nn.Linear(84, 10)  # type: ignore[index]
                 
     model.to(device)
         
@@ -139,13 +254,13 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         save_path=f"results/{label}_{args.epochs}_{args.lr}.pth",
     )
 
-    # Final test evaluation
+    # Final test evaluation (use the test helper)
     criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc = evaluate(model, test_loader, criterion, device)
-    
+    test_loss, test_acc, conf_m = test(model, test_loader, criterion, device)
+
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
-    return history, model
+    return history, model, conf_m
 
 def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
@@ -201,10 +316,15 @@ def main():
     else:
         print(f"Classes: {CIFAR10_CLASSES}")
 
-    if args.compare_augmentation:
+    # Priority: k-fold CV, then hyperparameter search, then other modes
+    if args.kfold > 0:
+        _run_kfold_cv(args, device)
+    elif args.hyperparameter_search:
+        _run_hyperparameter_search(args, device)
+    elif args.compare_augmentation:
         # ---- Choice 5: train with & without augmentation, then compare ----
-        history_aug, _ = _run_training(args, augment=True, device=device, tag="_aug")
-        history_no_aug, _ = _run_training(args, augment=False, device=device, tag="_noaug")
+        history_aug, _, _ = _run_training(args, augment=True, device=device, tag="_aug")
+        history_no_aug, _, _ = _run_training(args, augment=False, device=device, tag="_noaug")
 
         plot_augmentation_comparison(history_aug, history_no_aug, model_name=args.model)
         plot_training_curves(history_aug, model_name=f"{args.model}_aug")
@@ -215,18 +335,19 @@ def main():
     elif args.test_model:
         # ---- single test run ----
         augment = not args.no_augment
-        history, _, conf_m = _run_tests(args, augment==augment, device=device)
-        
-        plot_confusion_matrix(conf_m)
-        
+        test_loss, test_acc, conf_m = _run_tests(args, augment=augment, device=device)
+
+        plot_confusion_matrix(conf_m, model_name=args.model)
+
     else:
         # ---- Normal single training run ----
         augment = not args.no_augment
-        history, _ = _run_training(args, augment=augment, device=device)
+        history, model, conf_m = _run_training(args, augment=augment, device=device)
 
         # Choice 1 — Plot LR decay vs. Epochs
         plot_lr_schedule(history["lr"])
         plot_training_curves(history, model_name=args.model)
+        plot_confusion_matrix(conf_m, model_name=args.model)
 
 
 if __name__ == "__main__":
