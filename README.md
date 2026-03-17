@@ -86,6 +86,88 @@
 
 ---
 
+# Project Workflow: CNN-based Image Classification
+
+> To ensure training until **convergence**, the `--epochs` parameter is set to a high value (100+) to allow the built-in **Early Stopping** logic (which monitors validation loss) to stop the training at the optimal point.
+
+## The Baseline
+Train the standard LeNet-5 architecture to establish a performance benchmark on CIFAR-10.
+```bash
+python main.py --model simple --epochs 100
+```
+
+---
+
+## Architecture Evolution
+Iteratively improve the model by testing deeper or wider architectures.
+
+### 1. Medium CNN
+```bash
+python main.py --model medium --epochs 100
+```
+
+### 2. Deep CNN (Best Architecture)
+```bash
+python main.py --model deep --epochs 100
+```
+
+---
+
+## Choice Tasks
+
+We have to choose the best performing model (e.g., `medium`) to optimize and validate your results.
+
+### Choice 1: Learning Rate Scheduling
+Train with the `StepLR` scheduler to visualize how decreasing the LR helps convergence.
+```bash
+python main.py --model medium --epochs 100 --scheduler-step 5 --scheduler-gamma 0.5
+```
+
+### Choice 2: 5-Fold Cross-Validation
+Verify the stability of your model across different data splits.
+```bash
+python main.py --model medium --epochs 100 --kfold 5 --compare-kfold-split
+```
+
+### Choice 3: Hyperparameter Search
+Automatically test different optimizers and learning rates to find the global optimum.
+```bash
+python main.py --model medium --hyperparameter-search --epochs 20
+```
+
+### Choice 5: Data Augmentation Comparison
+Quantify the impact of transformations (flips, crops, etc.) on model generalization.
+```bash
+python main.py --model medium --epochs 100 --compare-augmentation
+```
+
+---
+
+## Phase 3: Transfer Learning
+Leverage knowledge from a related dataset (CIFAR-100) to improve performance on CIFAR-10.
+
+### 1. Pre-training on CIFAR-100
+Train the model on the 20 superclasses of CIFAR-100.
+```bash
+python main.py --model cifar100 --epochs 150
+```
+
+### 2. Fine-tuning on CIFAR-10
+Load the pre-trained weights and fine-tune on the original task with a smaller learning rate.
+```bash
+python main.py --model finetune --epochs 50 --lr 0.0005
+```
+
+---
+
+## Final Benchmarking
+Run the final evaluation on the **held-out test set** to generate your official accuracy and confusion matrix for the report.
+```bash
+python main.py --model medium --test-model
+```
+
+---
+
 ### 🏗️ Phase 1: Foundation & Baseline (CIFAR-10)
 
 > To ensure training until **convergence**, the `--epochs` parameter is set to a high value (100+) to allow the built-in **Early Stopping** logic (which monitors validation loss) to stop the training at the optimal point.
@@ -100,8 +182,8 @@ python main.py --model simple --epochs 100
 
 ### 🧪 Phase 2: Advanced Validation & Optimization
 
-* [ ] **[Kian]** **Choice 2 (10 pts):** Implement **5-fold Cross-Validation** for the baseline. Compare results to the fixed 80/20 split.
-* [ ] **[Kian]** **Choice 3 (10 pts):** Perform **Evolutionary Hyperparameter Search**.
+* [x] **[Kian]** **Choice 2 (10 pts):** Implement **5-fold Cross-Validation** for the baseline. Compare results to the fixed 80/20 split.
+* [x] **[Kian]** **Choice 3 (10 pts):** Perform **Evolutionary Hyperparameter Search**.
 * Evaluate 3 Optimizers, 3 LRs, 2 Weight Decays, and 2 Batch Sizes.
 
 
@@ -137,7 +219,7 @@ python main.py --model deep --epochs 100
 
 * [ ] **[Vinn]** **Choice 7 (15 pts):** Load **Tiny ImageNet**, filter for classes overlapping with CIFAR-10, and resize to 32x32.
 * [x] **[Vinn]** **Evaluation:** Test your best model on this new data. *Required: Accuracy + Confusion Matrix.*
-* [ ] **[Kian]** **Choice 8 (5 pts):** Fine-tune the best CIFAR-10 model on these Tiny ImageNet overlapping classes. Compare against Choice 7.
+* [ ] **[Vinn]** **Choice 8 (5 pts):** Fine-tune the best CIFAR-10 model on these Tiny ImageNet overlapping classes. Compare against Choice 7.
 
 ---
 
