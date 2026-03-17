@@ -209,16 +209,16 @@ def plot_multi_model_comparison(
     plt.close(fig)
     print(f"Comparison plot saved → {save_path}")
     
-def plot_confusion_matrix(matrix):
+def plot_confusion_matrix(matrix, name):
     fig, ax = plt.subplots(figsize=(10,8))
     se.heatmap(matrix, annot=True, fmt= "d", cmap="Blues", ax=ax)
     ax.set_xlabel("Predicted Labels")
     ax.set_ylabel("True labels")
-    ax.set_title("Confusion Matrix")
-    im_name = os.path.join(RESULTS_DIR, f"confusion_matrix_cifar10.png")
+    ax.set_title("Confusion Matrix {name}")
+    im_name = os.path.join(RESULTS_DIR, f"confusion_matrix_{name}.png")
     fig.savefig(im_name, dpi=150)
     
-def plot_tsne(coords, labels, classes):
+def plot_tsne(coords, labels, classes, name):
     
     plt.figure(figsize=(10,8))
     plotted_images = plt.scatter(coords[0], coords[1], c = labels, cmap='tab10', alpha = 0.7)
@@ -226,8 +226,8 @@ def plot_tsne(coords, labels, classes):
     plt.clim(-0.5, len(classes) - 0.5)
     class_labels = plt.gcf().axes[-1]
     class_labels.set_yticklabels(classes)
-    plt.title("t-SNE of best model FC with test set")
-    plt.savefig("best_model_tsne.png", dpi=150)    
+    plt.title(f't-SNE graph of {name} based on test set')
+    plt.savefig(f'results\\{name}_tsne.png', dpi=150)    
     
 
 def plot_multiple_out(output, name):

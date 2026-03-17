@@ -310,11 +310,11 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
 
     # Final test evaluation (use the test helper)
     criterion = torch.nn.CrossEntropyLoss()
-    test_loss, test_acc, conf_m, _, _ = test(model, test_loader, criterion, device)
+    test_loss, test_acc = evaluate(model, test_loader, criterion, device)
 
     print(f"Test  Loss {test_loss:.4f}  Acc {test_acc:.2f}%")
 
-    return history, model, conf_m
+    return history, model
 
 def _run_tests(args, augment: bool, device: torch.device, tag: str = ""):
     """Helper: load data, build model, train, return history."""
@@ -418,9 +418,9 @@ def main():
     elif args.hyperparameter_search:
         _run_hyperparameter_search(args, device)
     elif args.compare_augmentation:
-        # Choice 5: train with & without augmentation, then compare 
-        history_aug, _, _ = _run_training(args, augment=True, device=device, tag="_aug")
-        history_no_aug, _, _ = _run_training(args, augment=False, device=device, tag="_noaug")
+        # ---- Choice 5: train with & without augmentation, then compare ----
+        history_aug, _ = _run_training(args, augment=True, device=device, tag="_aug")
+        history_no_aug, _ = _run_training(args, augment=False, device=device, tag="_noaug")
 
         plot_augmentation_comparison(history_aug, history_no_aug, model_name=args.model)
         plot_training_curves(history_aug, model_name=f"{args.model}_aug")
@@ -435,22 +435,21 @@ def main():
         # Note: choice task 4
         if args.multi_output:
             history, _, outputs = _run_multi(args, augment=augment, device= device)
-            plot_multiple_out(outputs['conv1'], 'conv1')
-            plot_multiple_out(outputs['conv2'], 'conv2')
+            # plot_multiple_out(outputs['conv1'], 'conv1')
+            # plot_multiple_out(outputs['conv2'], 'conv2')
         else:
             history, _, conf_m, tsne_coord, labels = _run_tests(args, augment=augment, device=device)
-            plot_confusion_matrix(conf_m)
-            plot_tsne(tsne_coord, labels, CIFAR10_CLASSES)
+            plot_confusion_matrix(conf_m, args.model)
+            plot_tsne(tsne_coord, labels, CIFAR10_CLASSES, args.model)
 
     else:
         # ---- Normal single training run ----
         augment = not args.no_augment
-        history, model, conf_m = _run_training(args, augment=augment, device=device)
+        history, model = _run_training(args, augment=augment, device=device)
 
         # Choice 1 — Plot LR decay vs. Epochs
         plot_lr_schedule(history["lr"])
         plot_training_curves(history, model_name=args.model)
-        plot_confusion_matrix(conf_m)
 
 
 if __name__ == "__main__":
