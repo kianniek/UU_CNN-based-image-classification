@@ -231,8 +231,8 @@ def _run_training(args, augment: bool, device: torch.device, tag: str = ""):
         
         for name, layer in model.named_children():
             # Freezes first layers
-            if name == 'features':
-                for parameters in layer[:-3].parameters():
+            if name == 'features' and isinstance(layer, nn.Sequential):
+                for parameters in layer[:-3].parameters():  # type: ignore[index]
                     parameters.requires_grad = False
             # Changes last layer to 10 outputs
             if name == 'classifier' and isinstance(layer, nn.Sequential):
@@ -340,8 +340,12 @@ def main():
         # Plot LR schedule (same for both runs)
         plot_lr_schedule(history_aug["lr"])
     elif args.test_model:
-        # run test module only
-        pass
+        # ---- single test run ----
+        augment = not args.no_augment
+        test_loss, test_acc, conf_m = _run_tests(args, augment=augment, device=device)
+
+        plot_confusion_matrix(conf_m, model_name=args.model)
+
     else:
         # ---- Normal single training run ----
         augment = not args.no_augment
