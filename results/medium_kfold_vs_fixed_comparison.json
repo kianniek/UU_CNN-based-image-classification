@@ -1,0 +1,17 @@
+{
+  "model": "medium",
+  "k": 5,
+  "fixed": {
+    "best_val_acc": 63.01,
+    "best_val_loss": 1.0475323717117309,
+    "final_val_acc": 62.78,
+    "final_val_loss": 1.0490115139007568,
+    "stopped_epoch": 43
+  },
+  "kfold": {
+    "mean_accuracy": 56.584,
+    "std_accuracy": 0.6487094881377933,
+    "mean_loss": 1.2163193912506103,
+    "std_loss": 0.013832283047221861
+  }
+}
